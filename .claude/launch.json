@@ -9,10 +9,9 @@
     },
     {
       "name": "api",
-      "runtimeExecutable": "/Users/mihir/SparsileX/api/venv/bin/python",
-      "runtimeArgs": ["-m", "uvicorn", "main:app", "--reload", "--port", "8000"],
-      "port": 8000,
-      "cwd": "api"
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/mihir/SparsileX/api && /Users/mihir/SparsileX/api/venv/bin/python -m uvicorn main:app --reload --port 8000"],
+      "port": 8000
     }
   ]
 }

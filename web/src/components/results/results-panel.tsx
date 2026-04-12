@@ -19,7 +19,7 @@ export function ResultsPanel({ results }: ResultsPanelProps) {
             <h3 className="text-sm font-medium">{result.test_display_name}</h3>
           </div>
           <div className="p-3 space-y-3">
-            <StatsTable statistics={result.statistics} />
+            <StatsTable statistics={result.statistics} testName={result.test_name} />
             {Object.keys(result.assumption_checks).length > 0 && (
               <AssumptionChecks checks={result.assumption_checks} />
             )}

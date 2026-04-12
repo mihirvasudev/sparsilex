@@ -60,7 +60,7 @@ TOOL_DEFINITIONS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "test_name": {"type": "string", "enum": ["independent_ttest"]},
+                "test_name": {"type": "string", "enum": ["independent_ttest", "paired_ttest", "one_way_anova", "pearson_correlation", "chi_square", "descriptives"]},
                 "variables": {"type": "object"},
             },
             "required": ["test_name", "variables"],
@@ -72,7 +72,7 @@ TOOL_DEFINITIONS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "test_name": {"type": "string", "enum": ["independent_ttest"]},
+                "test_name": {"type": "string", "enum": ["independent_ttest", "paired_ttest", "one_way_anova", "pearson_correlation", "chi_square", "descriptives"]},
                 "variables": {"type": "object"},
                 "options": {"type": "object"},
             },

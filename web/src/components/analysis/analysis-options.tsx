@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { VariableSelect } from "./variable-select";
 
 interface AnalysisOptionsProps {
   testName: string;
@@ -70,20 +71,12 @@ export function AnalysisOptions({
                 {slot.label}
                 {slot.required && <span className="text-destructive ml-0.5">*</span>}
               </label>
-              <select
+              <VariableSelect
+                columns={filtered}
                 value={variables[slot.slot] || ""}
-                onChange={(e) => onSetVariable(slot.slot, e.target.value)}
-                className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
-              >
-                <option value="" disabled>
-                  Select {slot.label.toLowerCase()}
-                </option>
-                {filtered.map((col) => (
-                  <option key={col.name} value={col.name}>
-                    {col.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => onSetVariable(slot.slot, v)}
+                placeholder={`Select ${slot.label.toLowerCase()}`}
+              />
             </div>
           );
         })}

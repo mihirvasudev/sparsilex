@@ -23,10 +23,10 @@ export function AppHeader({
   hasData,
 }: AppHeaderProps) {
   return (
-    <header className="flex items-center h-11 border-b border-border bg-card px-3 gap-1 shrink-0">
-      <div className="flex items-center gap-2 mr-4">
-        <span className="font-semibold text-sm tracking-tight">SparsileX</span>
-        <span className="text-[10px] text-muted-foreground font-mono">v0.1</span>
+    <header className="flex items-center h-10 border-b border-border bg-card/80 backdrop-blur-sm px-3 gap-1 shrink-0">
+      <div className="flex items-center gap-2 mr-6">
+        <span className="font-bold text-sm tracking-tight bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">SparsileX</span>
+        <span className="text-[9px] text-muted-foreground/60 font-mono">0.1</span>
       </div>
 
       <nav className="flex items-center gap-0.5">

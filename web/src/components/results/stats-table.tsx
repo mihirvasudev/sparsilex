@@ -3,93 +3,199 @@
 import { Badge } from "@/components/ui/badge";
 
 interface StatsTableProps {
-  statistics: Record<string, number | string>;
+  statistics: Record<string, unknown>;
+  testName?: string;
 }
 
-const DISPLAY_ORDER = [
-  { key: "t_statistic", label: "t" },
-  { key: "degrees_of_freedom", label: "df" },
-  { key: "p_value", label: "p" },
-  { key: "cohens_d", label: "Cohen's d" },
-  { key: "mean_difference", label: "Mean Difference" },
-  { key: "ci_lower", label: "CI Lower" },
-  { key: "ci_upper", label: "CI Upper" },
-  { key: "mean_group1", label: "Mean (Group 1)" },
-  { key: "mean_group2", label: "Mean (Group 2)" },
-  { key: "std_group1", label: "SD (Group 1)" },
-  { key: "std_group2", label: "SD (Group 2)" },
-  { key: "n_group1", label: "n (Group 1)" },
-  { key: "n_group2", label: "n (Group 2)" },
-];
-
-function formatValue(key: string, value: number | string): string {
+function fmt(key: string, value: unknown): string {
+  if (value == null) return "-";
   if (typeof value === "string") return value;
-  if (key === "p_value") {
-    if (value < 0.001) return "< .001";
-    return value.toFixed(4).replace(/^0/, "");
+  const n = Number(value);
+  if (key.includes("p_value")) {
+    if (n < 0.001) return "< .001";
+    return n.toFixed(4).replace(/^0/, "");
   }
-  if (key === "degrees_of_freedom") return String(Math.round(value));
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(3);
+  if (key.includes("degrees_of_freedom") || key === "n" || key.startsWith("n_") || key === "df_between" || key === "df_within") {
+    return String(Math.round(n));
+  }
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(3);
 }
 
-function effectSizeLabel(d: number): { label: string; color: string } {
-  const abs = Math.abs(d);
-  if (abs < 0.2) return { label: "negligible", color: "text-muted-foreground" };
-  if (abs < 0.5) return { label: "small", color: "text-yellow-400" };
-  if (abs < 0.8) return { label: "medium", color: "text-orange-400" };
-  return { label: "large", color: "text-red-400" };
+function effectLabel(d: number): string {
+  const a = Math.abs(d);
+  if (a < 0.2) return "negligible";
+  if (a < 0.5) return "small";
+  if (a < 0.8) return "medium";
+  return "large";
 }
 
-export function StatsTable({ statistics }: StatsTableProps) {
-  const g1Label = statistics.group1_label || "Group 1";
-  const g2Label = statistics.group2_label || "Group 2";
-  const pValue = typeof statistics.p_value === "number" ? statistics.p_value : 1;
+function correlationLabel(r: number): string {
+  const a = Math.abs(r);
+  if (a < 0.1) return "negligible";
+  if (a < 0.3) return "weak";
+  if (a < 0.5) return "moderate";
+  if (a < 0.7) return "strong";
+  return "very strong";
+}
+
+function StatRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <tr className="border-b border-border/30">
+      <td className="py-1 pr-4 text-muted-foreground text-xs">{label}</td>
+      <td className={`py-1 font-mono text-right text-xs ${highlight ? "text-primary font-medium" : ""}`}>{value}</td>
+    </tr>
+  );
+}
+
+function DescriptivesTable({ statistics }: { statistics: Record<string, unknown> }) {
+  const cols = statistics.columns as Array<Record<string, unknown>> | undefined;
+  if (!cols) return null;
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-border">
+            <th className="py-1 text-left text-muted-foreground font-normal">Variable</th>
+            <th className="py-1 text-right text-muted-foreground font-normal">n</th>
+            <th className="py-1 text-right text-muted-foreground font-normal">Mean</th>
+            <th className="py-1 text-right text-muted-foreground font-normal">Median</th>
+            <th className="py-1 text-right text-muted-foreground font-normal">SD</th>
+            <th className="py-1 text-right text-muted-foreground font-normal">Min</th>
+            <th className="py-1 text-right text-muted-foreground font-normal">Max</th>
+            <th className="py-1 text-right text-muted-foreground font-normal">Skew</th>
+            <th className="py-1 text-right text-muted-foreground font-normal">Kurt</th>
+          </tr>
+        </thead>
+        <tbody className="font-mono">
+          {cols.map((c) => (
+            <tr key={String(c.variable)} className="border-b border-border/30">
+              <td className="py-1 font-sans">{String(c.variable)}</td>
+              <td className="py-1 text-right">{String(c.n)}</td>
+              <td className="py-1 text-right">{fmt("", c.mean)}</td>
+              <td className="py-1 text-right">{fmt("", c.median)}</td>
+              <td className="py-1 text-right">{fmt("", c.std)}</td>
+              <td className="py-1 text-right">{fmt("", c.min)}</td>
+              <td className="py-1 text-right">{fmt("", c.max)}</td>
+              <td className="py-1 text-right">{fmt("", c.skewness)}</td>
+              <td className="py-1 text-right">{fmt("", c.kurtosis)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function GroupStatsTable({ groups }: { groups: Array<Record<string, unknown>> }) {
+  return (
+    <div className="overflow-x-auto mt-2">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-border">
+            <th className="py-1 text-left text-muted-foreground font-normal">Group</th>
+            <th className="py-1 text-right text-muted-foreground font-normal">n</th>
+            <th className="py-1 text-right text-muted-foreground font-normal">Mean</th>
+            <th className="py-1 text-right text-muted-foreground font-normal">SD</th>
+          </tr>
+        </thead>
+        <tbody className="font-mono">
+          {groups.map((g) => (
+            <tr key={String(g.group)} className="border-b border-border/30">
+              <td className="py-1 font-sans">{String(g.group)}</td>
+              <td className="py-1 text-right">{String(g.n)}</td>
+              <td className="py-1 text-right">{fmt("", g.mean)}</td>
+              <td className="py-1 text-right">{fmt("", g.std)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function StatsTable({ statistics, testName }: StatsTableProps) {
+  const s = statistics as Record<string, unknown>;
+  const pValue = Number(s.p_value ?? 1);
   const significant = pValue < 0.05;
+
+  // Descriptives — special layout
+  if (testName === "descriptives") {
+    return <DescriptivesTable statistics={s} />;
+  }
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <Badge
-          variant="outline"
-          className={`text-[10px] ${
-            significant
-              ? "text-green-400 border-green-500/30"
-              : "text-muted-foreground border-border"
-          }`}
-        >
-          {significant ? "Significant" : "Not significant"} (p {formatValue("p_value", pValue)})
-        </Badge>
-        {typeof statistics.cohens_d === "number" && (
+      {/* Significance + effect badges */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {s.p_value !== undefined && (
+          <Badge
+            variant="outline"
+            className={`text-[10px] ${significant ? "text-green-400 border-green-500/30" : "text-muted-foreground"}`}
+          >
+            {significant ? "Significant" : "Not significant"} (p {fmt("p_value", s.p_value)})
+          </Badge>
+        )}
+        {s.cohens_d !== undefined && (
           <Badge variant="outline" className="text-[10px]">
-            {effectSizeLabel(statistics.cohens_d).label} effect
+            {effectLabel(Number(s.cohens_d))} effect
+          </Badge>
+        )}
+        {s.eta_squared !== undefined && (
+          <Badge variant="outline" className="text-[10px]">
+            {"\u03B7\u00B2"} = {fmt("", s.eta_squared)}
+          </Badge>
+        )}
+        {s.r !== undefined && (
+          <Badge variant="outline" className="text-[10px]">
+            {correlationLabel(Number(s.r))} correlation
+          </Badge>
+        )}
+        {s.cramers_v !== undefined && (
+          <Badge variant="outline" className="text-[10px]">
+            V = {fmt("", s.cramers_v)}
           </Badge>
         )}
       </div>
 
-      <table className="w-full text-xs">
+      {/* Main stats table */}
+      <table className="w-full">
         <tbody>
-          {DISPLAY_ORDER.map(({ key, label }) => {
-            if (statistics[key] === undefined) return null;
-            let displayLabel = label;
-            if (key === "mean_group1") displayLabel = `Mean (${g1Label})`;
-            if (key === "mean_group2") displayLabel = `Mean (${g2Label})`;
-            if (key === "std_group1") displayLabel = `SD (${g1Label})`;
-            if (key === "std_group2") displayLabel = `SD (${g2Label})`;
-            if (key === "n_group1") displayLabel = `n (${g1Label})`;
-            if (key === "n_group2") displayLabel = `n (${g2Label})`;
+          {/* T-test stats */}
+          {s.t_statistic !== undefined && <StatRow label="t" value={fmt("t", s.t_statistic)} />}
+          {s.f_statistic !== undefined && <StatRow label="F" value={fmt("f", s.f_statistic)} />}
+          {s.chi_square !== undefined && <StatRow label={"\u03C7\u00B2"} value={fmt("chi", s.chi_square)} />}
+          {s.r !== undefined && <StatRow label="r" value={fmt("r", s.r)} highlight />}
+          {s.r_squared !== undefined && <StatRow label="R\u00B2" value={fmt("r2", s.r_squared)} />}
+          {s.degrees_of_freedom !== undefined && <StatRow label="df" value={fmt("degrees_of_freedom", s.degrees_of_freedom)} />}
+          {s.df_between !== undefined && <StatRow label="df (between)" value={fmt("df_between", s.df_between)} />}
+          {s.df_within !== undefined && <StatRow label="df (within)" value={fmt("df_within", s.df_within)} />}
+          {s.p_value !== undefined && <StatRow label="p" value={fmt("p_value", s.p_value)} highlight={significant} />}
+          {s.cohens_d !== undefined && <StatRow label="Cohen's d" value={fmt("d", s.cohens_d)} />}
+          {s.eta_squared !== undefined && <StatRow label={"\u03B7\u00B2"} value={fmt("eta", s.eta_squared)} />}
+          {s.cramers_v !== undefined && <StatRow label="Cramer's V" value={fmt("v", s.cramers_v)} />}
+          {s.mean_difference !== undefined && <StatRow label="Mean Difference" value={fmt("md", s.mean_difference)} />}
+          {s.ci_lower !== undefined && <StatRow label="CI Lower" value={fmt("ci", s.ci_lower)} />}
+          {s.ci_upper !== undefined && <StatRow label="CI Upper" value={fmt("ci", s.ci_upper)} />}
 
-            return (
-              <tr key={key} className="border-b border-border/30">
-                <td className="py-1 pr-4 text-muted-foreground">{displayLabel}</td>
-                <td className="py-1 font-mono text-right">
-                  {formatValue(key, statistics[key])}
-                </td>
-              </tr>
-            );
-          })}
+          {/* Group means */}
+          {s.mean_group1 !== undefined && <StatRow label={`Mean (${s.group1_label || "Group 1"})`} value={fmt("m", s.mean_group1)} />}
+          {s.mean_group2 !== undefined && <StatRow label={`Mean (${s.group2_label || "Group 2"})`} value={fmt("m", s.mean_group2)} />}
+          {s.std_group1 !== undefined && <StatRow label={`SD (${s.group1_label || "Group 1"})`} value={fmt("s", s.std_group1)} />}
+          {s.std_group2 !== undefined && <StatRow label={`SD (${s.group2_label || "Group 2"})`} value={fmt("s", s.std_group2)} />}
+          {s.n_group1 !== undefined && <StatRow label={`n (${s.group1_label || "Group 1"})`} value={fmt("n_group1", s.n_group1)} />}
+          {s.n_group2 !== undefined && <StatRow label={`n (${s.group2_label || "Group 2"})`} value={fmt("n_group2", s.n_group2)} />}
+
+          {/* Paired t-test */}
+          {s.mean_var1 !== undefined && <StatRow label={`Mean (${s.var1_label || "Var 1"})`} value={fmt("m", s.mean_var1)} />}
+          {s.mean_var2 !== undefined && <StatRow label={`Mean (${s.var2_label || "Var 2"})`} value={fmt("m", s.mean_var2)} />}
+          {s.n !== undefined && <StatRow label="n" value={fmt("n", s.n)} />}
         </tbody>
       </table>
+
+      {/* ANOVA group stats */}
+      {Array.isArray(s.groups) && <GroupStatsTable groups={s.groups as Array<Record<string, unknown>>} />}
     </div>
   );
 }
