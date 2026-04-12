@@ -1,0 +1,12 @@
+{
+  "name": "sparsilex",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm dev:api\" \"pnpm dev:web\"",
+    "dev:web": "pnpm -F web dev",
+    "dev:api": "cd api && python -m uvicorn main:app --reload --port 8000"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
