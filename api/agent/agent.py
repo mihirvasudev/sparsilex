@@ -47,7 +47,10 @@ def _execute_tool(tool_name: str, tool_input: dict, dataset_id: str) -> dict:
     if tool_name not in dispatch:
         return {"error": f"Unknown tool: {tool_name}"}
 
-    return dispatch[tool_name](dataset_id=dataset_id, **tool_input)
+    try:
+        return dispatch[tool_name](dataset_id=dataset_id, **tool_input)
+    except Exception as e:
+        return {"error": f"{type(e).__name__}: {str(e)}"}
 
 
 async def run_agent(
@@ -70,14 +73,32 @@ async def run_agent(
     yield {"event": "meta", "data": json.dumps({"conversation_id": conv_id})}
 
     # Agentic loop
-    while True:
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4096,
-            system=system_prompt,
-            messages=memory.messages,
-            tools=TOOL_DEFINITIONS,
-        )
+    max_iterations = 10
+    for _ in range(max_iterations):
+        # Retry with backoff for rate limits
+        for attempt in range(3):
+            try:
+                response = client.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=2048,
+                    system=system_prompt,
+                    messages=memory.messages,
+                    tools=TOOL_DEFINITIONS,
+                )
+                break
+            except anthropic.RateLimitError:
+                wait = 15 * (attempt + 1)
+                yield {
+                    "event": "message",
+                    "data": json.dumps({"type": "thinking", "content": f"Rate limited, retrying in {wait}s..."}),
+                }
+                await asyncio.sleep(wait)
+        else:
+            yield {
+                "event": "message",
+                "data": json.dumps({"type": "message", "content": "Rate limit exceeded. Please try again in a minute."}),
+            }
+            break
 
         # Process response content blocks
         has_tool_use = False

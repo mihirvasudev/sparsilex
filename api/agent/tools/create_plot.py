@@ -4,6 +4,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from services.data_service import get_dataset
 
 
@@ -22,12 +23,17 @@ plt.rcParams.update({
 
 
 def create_plot(dataset_id: str, plot_type: str, variables: dict) -> dict:
-    df = get_dataset(dataset_id)
+    df = get_dataset(dataset_id).copy()
     fig, ax = plt.subplots(figsize=(7, 4.5))
 
     x_col = variables.get("x")
     y_col = variables.get("y")
     group_col = variables.get("group_by")
+
+    # Ensure numeric columns are actually numeric
+    for col in [x_col, y_col]:
+        if col and col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
     if plot_type == "histogram":
         if group_col:
