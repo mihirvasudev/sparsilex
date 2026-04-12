@@ -6,12 +6,26 @@ from scipy import stats
 
 def run_analysis(test_name: str, df: pd.DataFrame, variables: dict, options: dict) -> dict:
     dispatch = {
+        "descriptives": _run_descriptives,
         "independent_ttest": _run_independent_ttest,
         "paired_ttest": _run_paired_ttest,
+        "one_sample_ttest": _run_one_sample_ttest,
+        "welch_ttest": _run_welch_ttest,
+        "mann_whitney": _run_mann_whitney,
+        "wilcoxon": _run_wilcoxon,
         "one_way_anova": _run_one_way_anova,
+        "repeated_measures_anova": _run_repeated_measures_anova,
+        "ancova": _run_ancova,
+        "kruskal_wallis": _run_kruskal_wallis,
+        "linear_regression": _run_linear_regression,
+        "logistic_regression": _run_logistic_regression,
         "pearson_correlation": _run_pearson_correlation,
+        "spearman_correlation": _run_spearman_correlation,
         "chi_square": _run_chi_square,
-        "descriptives": _run_descriptives,
+        "binomial_test": _run_binomial_test,
+        "multinomial_test": _run_multinomial_test,
+        "fisher_exact": _run_fisher_exact,
+        "pca": _run_pca,
     }
     if test_name not in dispatch:
         raise ValueError(f"Unknown test: {test_name}")
@@ -335,3 +349,286 @@ def _run_chi_square(df: pd.DataFrame, variables: dict, options: dict) -> dict:
         },
         "assumption_checks": {},
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# NEW ANALYSES — Phase 1
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _run_one_sample_ttest(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    col = variables["variable"]
+    test_value = float(variables.get("test_value", options.get("test_value", 0)))
+    series = df[col].dropna()
+    n, m, sd = len(series), float(series.mean()), float(series.std(ddof=1))
+    t_stat, p_value = stats.ttest_1samp(series, test_value)
+    dof = n - 1
+    cohens_d = (m - test_value) / sd if sd > 0 else 0.0
+    ci_level = options.get("ci_level", 0.95)
+    se = sd / math.sqrt(n)
+    t_crit = stats.t.ppf((1 + ci_level) / 2, dof)
+    result = {
+        "result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "one_sample_ttest", "test_display_name": "One-Sample T-Test",
+        "statistics": {
+            "t_statistic": round(float(t_stat), 4), "degrees_of_freedom": dof, "p_value": round(float(p_value), 6),
+            "mean": round(m, 3), "test_value": test_value, "mean_difference": round(m - test_value, 3),
+            "std": round(sd, 3), "cohens_d": round(float(cohens_d), 4),
+            "ci_lower": round(m - t_crit * se, 3), "ci_upper": round(m + t_crit * se, 3), "ci_level": ci_level, "n": n,
+        }, "assumption_checks": {},
+    }
+    if options.get("assumption_checks", True) and n >= 3:
+        w, p = stats.shapiro(series)
+        result["assumption_checks"]["normality"] = {"test": "Shapiro-Wilk", "statistic": round(float(w), 4), "p_value": round(float(p), 4), "passed": float(p) > 0.05}
+    return result
+
+
+def _run_welch_ttest(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    dep, gv = variables["dependent"], variables["grouping"]
+    groups = df[gv].dropna().unique()
+    g1, g2 = df[df[gv] == groups[0]][dep].dropna(), df[df[gv] == groups[1]][dep].dropna()
+    n1, n2 = len(g1), len(g2)
+    m1, m2, s1, s2 = float(g1.mean()), float(g2.mean()), float(g1.std(ddof=1)), float(g2.std(ddof=1))
+    t_stat, p_value = stats.ttest_ind(g1, g2, equal_var=False)
+    num = (s1**2/n1 + s2**2/n2)**2
+    den = (s1**2/n1)**2/(n1-1) + (s2**2/n2)**2/(n2-1)
+    dof = num / den if den > 0 else n1+n2-2
+    pooled_sd = math.sqrt(((n1-1)*s1**2 + (n2-1)*s2**2) / (n1+n2-2))
+    d = (m1-m2) / pooled_sd if pooled_sd > 0 else 0.0
+    return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "welch_ttest", "test_display_name": "Welch's T-Test",
+        "statistics": {"t_statistic": round(float(t_stat), 4), "degrees_of_freedom": round(dof, 2), "p_value": round(float(p_value), 6),
+            "mean_group1": round(m1, 3), "mean_group2": round(m2, 3), "mean_difference": round(m1-m2, 3),
+            "std_group1": round(s1, 3), "std_group2": round(s2, 3), "cohens_d": round(float(d), 4),
+            "n_group1": n1, "n_group2": n2, "group1_label": str(groups[0]), "group2_label": str(groups[1])},
+        "assumption_checks": {}}
+
+
+def _run_mann_whitney(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    dep, gv = variables["dependent"], variables["grouping"]
+    groups = df[gv].dropna().unique()
+    g1, g2 = df[df[gv]==groups[0]][dep].dropna(), df[df[gv]==groups[1]][dep].dropna()
+    u_stat, p_value = stats.mannwhitneyu(g1, g2, alternative="two-sided")
+    n1, n2 = len(g1), len(g2)
+    r_rb = 1 - (2 * u_stat) / (n1 * n2)
+    return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "mann_whitney", "test_display_name": "Mann-Whitney U Test",
+        "statistics": {"u_statistic": round(float(u_stat), 4), "p_value": round(float(p_value), 6), "rank_biserial_r": round(float(r_rb), 4),
+            "median_group1": round(float(g1.median()), 3), "median_group2": round(float(g2.median()), 3),
+            "n_group1": n1, "n_group2": n2, "group1_label": str(groups[0]), "group2_label": str(groups[1])},
+        "assumption_checks": {}}
+
+
+def _run_wilcoxon(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    v1, v2 = variables["variable1"], variables["variable2"]
+    common = df[[v1, v2]].dropna().index
+    s1, s2 = df.loc[common, v1], df.loc[common, v2]
+    w_stat, p_value = stats.wilcoxon(s1, s2)
+    n = len(s1)
+    z = stats.norm.ppf(p_value / 2)
+    r_eff = abs(z) / math.sqrt(n) if n > 0 else 0.0
+    return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "wilcoxon", "test_display_name": "Wilcoxon Signed-Rank Test",
+        "statistics": {"w_statistic": round(float(w_stat), 4), "p_value": round(float(p_value), 6), "effect_size_r": round(float(r_eff), 4),
+            "median_var1": round(float(s1.median()), 3), "median_var2": round(float(s2.median()), 3), "n": n, "var1_label": v1, "var2_label": v2},
+        "assumption_checks": {}}
+
+
+def _run_repeated_measures_anova(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    measures = variables.get("measures", [])
+    if len(measures) < 2: raise ValueError("Need at least 2 repeated measures")
+    clean = df[measures].dropna()
+    n, k = len(clean), len(measures)
+    gm = clean.values.mean()
+    ss_bt = n * sum((float(clean[m].mean()) - gm)**2 for m in measures)
+    ss_subj = k * sum((float(clean.iloc[i].mean()) - gm)**2 for i in range(n))
+    ss_tot = float(np.sum((clean.values - gm)**2))
+    ss_err = ss_tot - ss_bt - ss_subj
+    df_bt, df_err = k-1, (n-1)*(k-1)
+    f_stat = (ss_bt/df_bt) / (ss_err/df_err) if df_err > 0 and ss_err > 0 else 0
+    p_value = 1 - stats.f.cdf(f_stat, df_bt, df_err)
+    eta_sq = ss_bt / (ss_bt + ss_err) if (ss_bt + ss_err) > 0 else 0
+    grps = [{"measure": m, "n": n, "mean": round(float(clean[m].mean()), 3), "std": round(float(clean[m].std(ddof=1)), 3)} for m in measures]
+    return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "repeated_measures_anova", "test_display_name": "Repeated Measures ANOVA",
+        "statistics": {"f_statistic": round(float(f_stat), 4), "p_value": round(float(p_value), 6), "df_between": df_bt, "df_error": df_err, "eta_squared": round(float(eta_sq), 4), "groups": grps},
+        "assumption_checks": {}}
+
+
+def _run_ancova(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    dep, factor, cov = variables["dependent"], variables["factor"], variables["covariate"]
+    clean = df[[dep, factor, cov]].dropna()
+    clean[dep] = pd.to_numeric(clean[dep], errors="coerce")
+    clean[cov] = pd.to_numeric(clean[cov], errors="coerce")
+    clean = clean.dropna()
+    groups = clean[factor].unique()
+    n_t = len(clean)
+    from numpy.linalg import lstsq as nls
+    dummies = pd.get_dummies(clean[factor], drop_first=False, dtype=float)
+    X_f = np.column_stack([np.ones(n_t), dummies.values, clean[[cov]].values])
+    X_r = np.column_stack([np.ones(n_t), clean[[cov]].values])
+    y = clean[dep].values
+    b_f, _, _, _ = nls(X_f, y, rcond=None)
+    b_r, _, _, _ = nls(X_r, y, rcond=None)
+    ss_f = float(np.sum((y - X_f @ b_f)**2))
+    ss_r = float(np.sum((y - X_r @ b_r)**2))
+    ss_fac = ss_r - ss_f
+    df_fac, df_err = len(groups)-1, n_t-len(groups)-1
+    f_stat = (ss_fac/df_fac) / (ss_f/df_err) if df_err > 0 and ss_f > 0 else 0
+    p_val = 1 - stats.f.cdf(f_stat, df_fac, df_err)
+    eta = ss_fac / (ss_fac + ss_f) if (ss_fac + ss_f) > 0 else 0
+    grps = [{"group": str(g), "n": len(clean[clean[factor]==g]), "mean": round(float(clean[clean[factor]==g][dep].mean()), 3)} for g in groups]
+    return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "ancova", "test_display_name": "ANCOVA",
+        "statistics": {"f_statistic": round(float(f_stat), 4), "p_value": round(float(p_val), 6), "df_factor": df_fac, "df_error": df_err, "eta_squared": round(float(eta), 4), "covariate": cov, "groups": grps},
+        "assumption_checks": {}}
+
+
+def _run_kruskal_wallis(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    dep, factor = variables["dependent"], variables["factor"]
+    groups = df[factor].dropna().unique()
+    gd = [df[df[factor]==g][dep].dropna() for g in groups]
+    h, p = stats.kruskal(*gd)
+    nt = sum(len(g) for g in gd)
+    eps = (h - len(groups) + 1) / (nt - len(groups)) if nt > len(groups) else 0
+    grps = [{"group": str(g), "n": len(d), "median": round(float(d.median()), 3)} for g, d in zip(groups, gd)]
+    return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "kruskal_wallis", "test_display_name": "Kruskal-Wallis H Test",
+        "statistics": {"h_statistic": round(float(h), 4), "p_value": round(float(p), 6), "degrees_of_freedom": len(groups)-1, "epsilon_squared": round(float(eps), 4), "groups": grps},
+        "assumption_checks": {}}
+
+
+def _run_linear_regression(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    dep = variables["dependent"]
+    preds = variables.get("predictors", [])
+    if isinstance(preds, str): preds = [preds]
+    clean = df[[dep]+preds].dropna()
+    y = clean[dep].values.astype(float)
+    X = clean[preds].values.astype(float)
+    n, p = X.shape
+    X_i = np.column_stack([np.ones(n), X])
+    from numpy.linalg import lstsq as nls, inv as ninv
+    b, _, _, _ = nls(X_i, y, rcond=None)
+    resid = y - X_i @ b
+    ss_res, ss_tot = float(np.sum(resid**2)), float(np.sum((y - y.mean())**2))
+    r2 = 1 - ss_res/ss_tot if ss_tot > 0 else 0
+    adj_r2 = 1 - (1-r2)*(n-1)/(n-p-1) if n > p+1 else r2
+    ms_reg = (ss_tot-ss_res)/p if p > 0 else 0
+    ms_res = ss_res/(n-p-1) if n > p+1 else 0
+    f_s = ms_reg/ms_res if ms_res > 0 else 0
+    f_p = 1 - stats.f.cdf(f_s, p, n-p-1) if n > p+1 else 1.0
+    try: se_b = np.sqrt(np.diag(ms_res * ninv(X_i.T @ X_i)))
+    except: se_b = np.zeros(p+1)
+    coefs = []
+    for i, nm in enumerate(["(Intercept)"]+preds):
+        tv = b[i]/se_b[i] if se_b[i] > 0 else 0
+        pv = 2*(1-stats.t.cdf(abs(tv), n-p-1)) if n > p+1 else 1.0
+        coefs.append({"predictor": nm, "b": round(float(b[i]), 4), "se": round(float(se_b[i]), 4), "t": round(float(tv), 4), "p": round(float(pv), 6)})
+    result = {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "linear_regression", "test_display_name": "Linear Regression",
+        "statistics": {"r_squared": round(r2, 4), "adj_r_squared": round(adj_r2, 4), "f_statistic": round(float(f_s), 4), "p_value": round(float(f_p), 6), "df_model": p, "df_residual": n-p-1, "n": n, "coefficients": coefs},
+        "assumption_checks": {}}
+    if options.get("assumption_checks", True) and n >= 3:
+        w, sp = stats.shapiro(resid[:min(n, 5000)])
+        result["assumption_checks"]["normality_residuals"] = {"test": "Shapiro-Wilk (residuals)", "statistic": round(float(w), 4), "p_value": round(float(sp), 4), "passed": float(sp) > 0.05}
+        dw = float(np.sum(np.diff(resid)**2) / ss_res) if ss_res > 0 else 2.0
+        result["assumption_checks"]["independence"] = {"test": "Durbin-Watson", "statistic": round(dw, 4), "p_value": 0.0, "passed": 1.5 < dw < 2.5}
+    return result
+
+
+def _run_logistic_regression(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    dep = variables["dependent"]
+    preds = variables.get("predictors", [])
+    if isinstance(preds, str): preds = [preds]
+    clean = df[[dep]+preds].dropna()
+    y = clean[dep].values
+    classes = np.unique(y)
+    if len(classes) != 2: raise ValueError(f"Binary outcome required, found {len(classes)} classes")
+    yb = (y == classes[1]).astype(float)
+    X = clean[preds].values.astype(float)
+    n, p = X.shape
+    X_i = np.column_stack([np.ones(n), X])
+    b = np.zeros(p+1)
+    for _ in range(50):
+        z = X_i @ b
+        pr = 1/(1+np.exp(-np.clip(z, -500, 500)))
+        W = np.clip(pr*(1-pr), 1e-10, None)
+        try: bn = b + np.linalg.solve(X_i.T @ np.diag(W) @ X_i, X_i.T @ (yb - pr))
+        except: break
+        if np.max(np.abs(bn-b)) < 1e-8: b = bn; break
+        b = bn
+    pf = 1/(1+np.exp(-np.clip(X_i @ b, -500, 500)))
+    acc = float(np.mean((pf >= 0.5).astype(int) == yb))
+    ll = float(np.sum(yb*np.log(pf+1e-10) + (1-yb)*np.log(1-pf+1e-10)))
+    ll0 = float(n*(np.mean(yb)*np.log(np.mean(yb)+1e-10) + (1-np.mean(yb))*np.log(1-np.mean(yb)+1e-10)))
+    pr2 = 1 - ll/ll0 if ll0 != 0 else 0
+    W = np.clip(pf*(1-pf), 1e-10, None)
+    try: se = np.sqrt(np.diag(np.linalg.inv(X_i.T @ np.diag(W) @ X_i)))
+    except: se = np.zeros(p+1)
+    coefs = []
+    for i, nm in enumerate(["(Intercept)"]+preds):
+        zv = b[i]/se[i] if se[i] > 0 else 0
+        pv = 2*(1-stats.norm.cdf(abs(zv)))
+        coefs.append({"predictor": nm, "b": round(float(b[i]), 4), "se": round(float(se[i]), 4), "z": round(float(zv), 4), "p": round(float(pv), 6), "odds_ratio": round(float(np.exp(b[i])), 4)})
+    return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "logistic_regression", "test_display_name": "Logistic Regression",
+        "statistics": {"pseudo_r_squared": round(float(pr2), 4), "log_likelihood": round(ll, 3), "accuracy": round(acc, 4), "n": n, "outcome_classes": [str(c) for c in classes], "coefficients": coefs},
+        "assumption_checks": {}}
+
+
+def _run_spearman_correlation(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    v1, v2 = variables["variable1"], variables["variable2"]
+    clean = df[[v1, v2]].dropna()
+    rho, p = stats.spearmanr(clean[v1], clean[v2])
+    return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "spearman_correlation", "test_display_name": "Spearman Rank Correlation",
+        "statistics": {"rho": round(float(rho), 4), "p_value": round(float(p), 6), "n": len(clean), "var1_label": v1, "var2_label": v2},
+        "assumption_checks": {}}
+
+
+def _run_binomial_test(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    col = variables["variable"]
+    tp = float(options.get("test_proportion", 0.5))
+    s = df[col].dropna()
+    vals = s.unique()
+    if len(vals) != 2: raise ValueError(f"Need 2 categories, found {len(vals)}")
+    k, n = int((s == vals[0]).sum()), len(s)
+    r = stats.binomtest(k, n, tp)
+    return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "binomial_test", "test_display_name": "Binomial Test",
+        "statistics": {"successes": k, "n": n, "observed_proportion": round(k/n, 4), "test_proportion": tp, "p_value": round(float(r.pvalue), 6),
+            "ci_lower": round(float(r.proportion_ci().low), 4), "ci_upper": round(float(r.proportion_ci().high), 4), "success_label": str(vals[0])},
+        "assumption_checks": {}}
+
+
+def _run_multinomial_test(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    col = variables["variable"]
+    counts = df[col].dropna().value_counts()
+    obs, n, k = counts.values, counts.values.sum(), len(counts)
+    exp = np.full(k, n/k)
+    chi2, p = stats.chisquare(obs, f_exp=exp)
+    cats = [{"category": str(c), "observed": int(o), "expected": round(float(e), 1)} for c, o, e in zip(counts.index, obs, exp)]
+    return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "multinomial_test", "test_display_name": "Multinomial Goodness-of-Fit",
+        "statistics": {"chi_square": round(float(chi2), 4), "p_value": round(float(p), 6), "degrees_of_freedom": k-1, "n": int(n), "categories": cats},
+        "assumption_checks": {}}
+
+
+def _run_fisher_exact(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    v1, v2 = variables["variable1"], variables["variable2"]
+    ct = pd.crosstab(df[v1], df[v2])
+    if ct.shape != (2, 2): raise ValueError(f"Need 2x2 table, got {ct.shape}")
+    odr, p = stats.fisher_exact(ct)
+    return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "fisher_exact", "test_display_name": "Fisher's Exact Test",
+        "statistics": {"odds_ratio": round(float(odr), 4), "p_value": round(float(p), 6), "n": int(ct.values.sum()), "var1_label": v1, "var2_label": v2},
+        "assumption_checks": {}}
+
+
+def _run_pca(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    cols = variables.get("variables", [])
+    if isinstance(cols, str): cols = [cols]
+    nc = int(options.get("n_components", 0))
+    data = df[cols].dropna()
+    n, p = data.shape
+    from numpy.linalg import eigh
+    X = (data - data.mean()) / data.std(ddof=1)
+    corr = X.T @ X / (n-1)
+    eigvals, eigvecs = eigh(corr.values)
+    idx = np.argsort(eigvals)[::-1]
+    eigvals, eigvecs = eigvals[idx], eigvecs[:, idx]
+    if nc <= 0: nc = max(1, int(np.sum(eigvals > 1)))
+    tv = eigvals.sum()
+    comps = []
+    for i in range(min(nc, p)):
+        ld = {c: round(float(eigvecs[j, i]), 4) for j, c in enumerate(cols)}
+        comps.append({"component": i+1, "eigenvalue": round(float(eigvals[i]), 4), "variance_pct": round(float(eigvals[i]/tv*100), 2), "cumulative_pct": round(float(np.sum(eigvals[:i+1])/tv*100), 2), "loadings": ld})
+    return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "pca", "test_display_name": "Principal Component Analysis",
+        "statistics": {"n_components_extracted": nc, "total_variance_explained": round(float(np.sum(eigvals[:nc])/tv*100), 2), "n": n, "components": comps},
+        "assumption_checks": {}}

@@ -60,7 +60,7 @@ TOOL_DEFINITIONS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "test_name": {"type": "string", "enum": ["independent_ttest", "paired_ttest", "one_way_anova", "pearson_correlation", "chi_square", "descriptives"]},
+                "test_name": {"type": "string", "enum": ["descriptives", "one_sample_ttest", "independent_ttest", "welch_ttest", "paired_ttest", "mann_whitney", "wilcoxon", "one_way_anova", "repeated_measures_anova", "ancova", "kruskal_wallis", "linear_regression", "logistic_regression", "pearson_correlation", "spearman_correlation", "chi_square", "fisher_exact", "binomial_test", "multinomial_test", "pca"]},
                 "variables": {"type": "object"},
             },
             "required": ["test_name", "variables"],
@@ -72,7 +72,7 @@ TOOL_DEFINITIONS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "test_name": {"type": "string", "enum": ["independent_ttest", "paired_ttest", "one_way_anova", "pearson_correlation", "chi_square", "descriptives"]},
+                "test_name": {"type": "string", "enum": ["descriptives", "one_sample_ttest", "independent_ttest", "welch_ttest", "paired_ttest", "mann_whitney", "wilcoxon", "one_way_anova", "repeated_measures_anova", "ancova", "kruskal_wallis", "linear_regression", "logistic_regression", "pearson_correlation", "spearman_correlation", "chi_square", "fisher_exact", "binomial_test", "multinomial_test", "pca"]},
                 "variables": {"type": "object"},
                 "options": {"type": "object"},
             },
