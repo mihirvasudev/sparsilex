@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { VariableSelect } from "./variable-select";
+import { ANALYSIS_HELP } from "@/lib/analysis-help";
 
 interface AnalysisOptionsProps {
   testName: string;
@@ -113,6 +114,8 @@ export function AnalysisOptions({
   isAiSuggested,
 }: AnalysisOptionsProps) {
   const def = ANALYSIS_REGISTRY[testName];
+  const help = ANALYSIS_HELP[testName];
+  const [showHelp, setShowHelp] = useState(false);
   if (!def) return null;
 
   const canRun = def.variables
@@ -141,11 +144,34 @@ export function AnalysisOptions({
             </Badge>
           )}
         </div>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">&times;</button>
+        <div className="flex items-center gap-2">
+          {help && (
+            <button onClick={() => setShowHelp(!showHelp)} className={`text-xs ${showHelp ? "text-primary" : "text-muted-foreground hover:text-foreground"}`} title="Help">?</button>
+          )}
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">&times;</button>
+        </div>
       </div>
 
-      {def.description && (
+      {def.description && !showHelp && (
         <p className="px-3 pt-2 text-[10px] text-muted-foreground/70">{def.description}</p>
+      )}
+
+      {showHelp && help && (
+        <div className="px-3 pt-2 space-y-2 bg-primary/5 border-b border-primary/20 pb-3">
+          <p className="text-[11px] text-foreground/80">{help.when}</p>
+          {help.assumptions.length > 0 && (
+            <div>
+              <p className="text-[10px] text-muted-foreground font-medium">Assumptions</p>
+              <ul className="text-[10px] text-muted-foreground/80 list-disc pl-4 space-y-0.5">
+                {help.assumptions.map((a, i) => <li key={i}>{a}</li>)}
+              </ul>
+            </div>
+          )}
+          <div>
+            <p className="text-[10px] text-muted-foreground font-medium">Interpretation</p>
+            <p className="text-[10px] text-muted-foreground/80">{help.interpret}</p>
+          </div>
+        </div>
       )}
 
       <div className="p-3 space-y-2.5">

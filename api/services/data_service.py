@@ -5,6 +5,8 @@ import numpy as np
 
 _datasets: dict[str, pd.DataFrame] = {}
 _filenames: dict[str, str] = {}
+_labels: dict[str, dict[str, str]] = {}  # dataset_id -> {column_name: label}
+_type_overrides: dict[str, dict[str, str]] = {}  # dataset_id -> {column_name: forced_type}
 
 
 def parse_csv(content: bytes, filename: str) -> tuple[str, pd.DataFrame]:

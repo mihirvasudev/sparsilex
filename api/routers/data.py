@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File
 from pydantic import BaseModel
-from services.data_service import parse_csv, get_column_stats, get_preview, get_dataset, _datasets
+from services.data_service import parse_csv, get_column_stats, get_preview, get_dataset, _datasets, _labels, _type_overrides
 import pandas as pd
 import numpy as np
 
@@ -160,3 +160,52 @@ async def impute_data(req: ImputeRequest):
 
     _datasets[req.dataset_id] = df
     return _refresh_response(req.dataset_id, "impute", f"Imputed {missing} missing values in {req.column} ({req.strategy})")
+
+
+# ── Variable Labels & Type Overrides ─────────────────────────────────────────
+
+class SetLabelRequest(BaseModel):
+    dataset_id: str
+    column: str
+    label: str
+
+
+class SetTypeRequest(BaseModel):
+    dataset_id: str
+    column: str
+    column_type: str  # "numeric", "categorical", "ordinal"
+
+
+@router.post("/set-label")
+async def set_label(req: SetLabelRequest):
+    get_dataset(req.dataset_id)  # validate exists
+    if req.dataset_id not in _labels:
+        _labels[req.dataset_id] = {}
+    _labels[req.dataset_id][req.column] = req.label
+    return {"column": req.column, "label": req.label}
+
+
+@router.post("/set-type")
+async def set_type(req: SetTypeRequest):
+    df = get_dataset(req.dataset_id)
+    if req.column not in df.columns:
+        return {"error": f"Column {req.column} not found"}
+
+    if req.dataset_id not in _type_overrides:
+        _type_overrides[req.dataset_id] = {}
+    _type_overrides[req.dataset_id][req.column] = req.column_type
+
+    # Actually convert the column
+    if req.column_type == "numeric":
+        df[req.column] = pd.to_numeric(df[req.column], errors="coerce")
+    elif req.column_type in ("categorical", "ordinal"):
+        df[req.column] = df[req.column].astype(str)
+    _datasets[req.dataset_id] = df
+
+    return _refresh_response(req.dataset_id, "set_type", f"Set {req.column} to {req.column_type}")
+
+
+@router.get("/{dataset_id}/labels")
+async def get_labels(dataset_id: str):
+    get_dataset(dataset_id)  # validate
+    return _labels.get(dataset_id, {})

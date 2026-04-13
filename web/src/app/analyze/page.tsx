@@ -124,7 +124,18 @@ export default function AnalyzePage() {
               </div>
               {selectedColumn && (
                 <div className="w-56 border-l border-border shrink-0 overflow-y-auto">
-                  <ColumnStats column={selectedColumn} />
+                  <ColumnStats
+                    column={selectedColumn}
+                    datasetId={dataset.datasetId || undefined}
+                    onTypeChanged={() => {
+                      // Refresh data after type change
+                      if (dataset.datasetId) {
+                        fetch(`${API}/api/data/${dataset.datasetId}/preview?offset=0&limit=100`)
+                          .then((r) => r.json())
+                          .then((data) => dataset.refreshFromCleaningResult({ rows: data.total_rows, columns: dataset.columns, preview: data.rows }));
+                      }
+                    }}
+                  />
                 </div>
               )}
             </div>
