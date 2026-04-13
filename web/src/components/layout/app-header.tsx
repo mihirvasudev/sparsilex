@@ -12,14 +12,18 @@ import { Button } from "@/components/ui/button";
 interface AppHeaderProps {
   onSelectAnalysis: (testName: string) => void;
   onToggleAgent: () => void;
+  onToggleCleaning: () => void;
   agentOpen: boolean;
+  cleaningOpen: boolean;
   hasData: boolean;
 }
 
 export function AppHeader({
   onSelectAnalysis,
   onToggleAgent,
+  onToggleCleaning,
   agentOpen,
+  cleaningOpen,
   hasData,
 }: AppHeaderProps) {
   return (
@@ -71,7 +75,16 @@ export function AppHeader({
         })}
       </nav>
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-1">
+        <Button
+          variant={cleaningOpen ? "secondary" : "ghost"}
+          size="sm"
+          className="h-7 text-xs"
+          onClick={onToggleCleaning}
+          disabled={!hasData}
+        >
+          Clean
+        </Button>
         <Button
           variant={agentOpen ? "secondary" : "ghost"}
           size="sm"

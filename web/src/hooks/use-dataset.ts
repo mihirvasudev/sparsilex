@@ -1,7 +1,7 @@
 "use client";
 import { useState, useCallback } from "react";
 import type { ColumnInfo, DatasetResponse } from "@/lib/types";
-import { uploadDataset as apiUpload } from "@/lib/api";
+import { uploadDataset as apiUpload, getPreview } from "@/lib/api";
 
 interface DatasetState {
   datasetId: string | null;
@@ -58,5 +58,14 @@ export function useDataset() {
     });
   }, []);
 
-  return { ...state, uploadFile, reset };
+  const refreshFromCleaningResult = useCallback((result: { rows: number; columns: ColumnInfo[]; preview: Record<string, unknown>[] }) => {
+    setState((s) => ({
+      ...s,
+      rows: result.rows,
+      columns: result.columns,
+      preview: result.preview,
+    }));
+  }, []);
+
+  return { ...state, uploadFile, reset, refreshFromCleaningResult };
 }

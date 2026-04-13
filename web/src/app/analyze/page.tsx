@@ -12,6 +12,7 @@ import { generateSampleCSV } from "@/lib/sample-data";
 import { AnalysisOptions } from "@/components/analysis/analysis-options";
 import { ResultsPanel } from "@/components/results/results-panel";
 import { AgentPanel } from "@/components/agent/agent-panel";
+import { DataCleaning } from "@/components/data/data-cleaning";
 import type { ColumnInfo } from "@/lib/types";
 
 export default function AnalyzePage() {
@@ -20,6 +21,7 @@ export default function AnalyzePage() {
   const agent = useAgent();
 
   const [agentOpen, setAgentOpen] = useState(false);
+  const [cleaningOpen, setCleaningOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<ColumnInfo | null>(null);
   const [isAiSuggested, setIsAiSuggested] = useState(false);
 
@@ -73,7 +75,9 @@ export default function AnalyzePage() {
       <AppHeader
         onSelectAnalysis={handleSelectAnalysis}
         onToggleAgent={() => setAgentOpen((o) => !o)}
+        onToggleCleaning={() => setCleaningOpen((o) => !o)}
         agentOpen={agentOpen}
+        cleaningOpen={cleaningOpen}
         hasData={!!dataset.datasetId}
       />
 
@@ -107,6 +111,16 @@ export default function AnalyzePage() {
         {/* Right: Options + Results + Agent */}
         <div className="w-[420px] shrink-0 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            {/* Data cleaning panel */}
+            {cleaningOpen && dataset.datasetId && (
+              <DataCleaning
+                datasetId={dataset.datasetId}
+                columns={dataset.columns}
+                onDataChanged={(result) => dataset.refreshFromCleaningResult(result)}
+                onClose={() => setCleaningOpen(false)}
+              />
+            )}
+
             {/* Analysis options panel */}
             {analysis.selectedTest && (
               <AnalysisOptions
