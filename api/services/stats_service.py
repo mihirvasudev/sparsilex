@@ -282,6 +282,29 @@ def _run_one_way_anova(df: pd.DataFrame, variables: dict, options: dict) -> dict
             "passed": float(lev_p) > 0.05,
         }
 
+    # Post-hoc tests (Tukey HSD via pairwise comparisons)
+    if options.get("post_hoc", True) and len(groups_labels) > 2:
+        all_data = np.concatenate([g.values for g in group_data])
+        all_labels = np.concatenate([[str(l)] * len(g) for l, g in zip(groups_labels, group_data)])
+        n_total = len(all_data)
+        ms_within = (ss_total - ss_between) / df_within if df_within > 0 else 0
+        post_hoc = []
+        for i in range(len(groups_labels)):
+            for j in range(i + 1, len(groups_labels)):
+                gi, gj = group_data[i], group_data[j]
+                diff = float(gi.mean() - gj.mean())
+                se = math.sqrt(ms_within * (1/len(gi) + 1/len(gj)) / 2) if ms_within > 0 else 0
+                q = abs(diff) / se if se > 0 else 0
+                # Bonferroni correction
+                t_val = abs(diff) / (math.sqrt(ms_within * (1/len(gi) + 1/len(gj)))) if ms_within > 0 else 0
+                p_bonf = min(1.0, float(2 * (1 - stats.t.cdf(t_val, df_within))) * (len(groups_labels) * (len(groups_labels) - 1) / 2))
+                post_hoc.append({
+                    "group1": str(groups_labels[i]), "group2": str(groups_labels[j]),
+                    "mean_diff": round(diff, 3), "p_bonferroni": round(p_bonf, 6),
+                    "significant": p_bonf < 0.05,
+                })
+        result["statistics"]["post_hoc"] = post_hoc
+
     return result
 
 

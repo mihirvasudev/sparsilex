@@ -67,8 +67,10 @@ export interface AnalysisResult {
   result_id: string;
   test_name: string;
   test_display_name: string;
-  statistics: Record<string, number | string>;
+  statistics: Record<string, unknown>;
   assumption_checks: Record<string, AssumptionCheck>;
+  code?: { r: string; python: string };
+  apa_text?: string;
 }
 
 // Agent types
