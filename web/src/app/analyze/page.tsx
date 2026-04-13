@@ -5,10 +5,10 @@ import { useDataset } from "@/hooks/use-dataset";
 import { useAnalysis } from "@/hooks/use-analysis";
 import { useAgent } from "@/hooks/use-agent";
 import { AppHeader } from "@/components/layout/app-header";
-import { UploadZone } from "@/components/data/upload-zone";
 import { DataGrid } from "@/components/data/data-grid";
 import { ColumnStats } from "@/components/data/column-stats";
 import { generateSampleCSV } from "@/lib/sample-data";
+import { WelcomeScreen } from "@/components/layout/welcome-screen";
 import { AnalysisOptions } from "@/components/analysis/analysis-options";
 import { ResultsPanel } from "@/components/results/results-panel";
 import { AgentPanel } from "@/components/agent/agent-panel";
@@ -104,42 +104,38 @@ export default function AnalyzePage() {
         hasData={!!dataset.datasetId}
       />
 
+      {!dataset.datasetId ? (
+        <WelcomeScreen onUpload={dataset.uploadFile} onLoadSample={handleLoadSample} isLoading={dataset.isLoading} />
+      ) : (
       <div className="flex flex-1 min-h-0">
         {/* Left: Data Grid */}
         <div className="flex-1 flex flex-col min-w-0 border-r border-border">
-          {!dataset.datasetId ? (
-            <div className="flex-1 p-6">
-              <UploadZone onUpload={dataset.uploadFile} isLoading={dataset.isLoading} onLoadSample={handleLoadSample} />
+          <div className="flex flex-1 min-h-0">
+            <div className="flex-1 min-w-0">
+              <DataGrid
+                columns={dataset.columns}
+                rows={dataset.preview}
+                totalRows={dataset.rows}
+                onColumnClick={setSelectedColumn}
+                selectedColumn={selectedColumn?.name}
+              />
             </div>
-          ) : (
-            <div className="flex flex-1 min-h-0">
-              <div className="flex-1 min-w-0">
-                <DataGrid
-                  columns={dataset.columns}
-                  rows={dataset.preview}
-                  totalRows={dataset.rows}
-                  onColumnClick={setSelectedColumn}
-                  selectedColumn={selectedColumn?.name}
+            {selectedColumn && (
+              <div className="w-56 border-l border-border shrink-0 overflow-y-auto">
+                <ColumnStats
+                  column={selectedColumn}
+                  datasetId={dataset.datasetId || undefined}
+                  onTypeChanged={() => {
+                    if (dataset.datasetId) {
+                      fetch(`${API}/api/data/${dataset.datasetId}/preview?offset=0&limit=100`)
+                        .then((r) => r.json())
+                        .then((data) => dataset.refreshFromCleaningResult({ rows: data.total_rows, columns: dataset.columns, preview: data.rows }));
+                    }
+                  }}
                 />
               </div>
-              {selectedColumn && (
-                <div className="w-56 border-l border-border shrink-0 overflow-y-auto">
-                  <ColumnStats
-                    column={selectedColumn}
-                    datasetId={dataset.datasetId || undefined}
-                    onTypeChanged={() => {
-                      // Refresh data after type change
-                      if (dataset.datasetId) {
-                        fetch(`${API}/api/data/${dataset.datasetId}/preview?offset=0&limit=100`)
-                          .then((r) => r.json())
-                          .then((data) => dataset.refreshFromCleaningResult({ rows: data.total_rows, columns: dataset.columns, preview: data.rows }));
-                      }
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Right: Options + Results + Agent */}
@@ -200,6 +196,7 @@ export default function AnalyzePage() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
