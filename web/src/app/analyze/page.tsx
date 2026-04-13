@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { UploadZone } from "@/components/data/upload-zone";
 import { DataGrid } from "@/components/data/data-grid";
 import { ColumnStats } from "@/components/data/column-stats";
+import { generateSampleCSV } from "@/lib/sample-data";
 import { AnalysisOptions } from "@/components/analysis/analysis-options";
 import { ResultsPanel } from "@/components/results/results-panel";
 import { AgentPanel } from "@/components/agent/agent-panel";
@@ -54,6 +55,10 @@ export default function AnalyzePage() {
     }
   }, [dataset.datasetId, analysis]);
 
+  const handleLoadSample = useCallback(() => {
+    dataset.uploadFile(generateSampleCSV());
+  }, [dataset]);
+
   const handleAgentSend = useCallback(
     (message: string) => {
       if (dataset.datasetId) {
@@ -77,7 +82,7 @@ export default function AnalyzePage() {
         <div className="flex-1 flex flex-col min-w-0 border-r border-border">
           {!dataset.datasetId ? (
             <div className="flex-1 p-6">
-              <UploadZone onUpload={dataset.uploadFile} isLoading={dataset.isLoading} />
+              <UploadZone onUpload={dataset.uploadFile} isLoading={dataset.isLoading} onLoadSample={handleLoadSample} />
             </div>
           ) : (
             <div className="flex flex-1 min-h-0">

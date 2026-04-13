@@ -5,9 +5,10 @@ import { useCallback, useRef, useState } from "react";
 interface UploadZoneProps {
   onUpload: (file: File) => void;
   isLoading: boolean;
+  onLoadSample?: () => void;
 }
 
-export function UploadZone({ onUpload, isLoading }: UploadZoneProps) {
+export function UploadZone({ onUpload, isLoading, onLoadSample }: UploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -65,7 +66,10 @@ export function UploadZone({ onUpload, isLoading }: UploadZoneProps) {
               CSV, TSV, or Excel — or click to browse
             </p>
           </div>
-          <button className="mt-2 text-xs text-primary hover:underline">
+          <button
+            className="mt-2 text-xs text-primary hover:underline"
+            onClick={(e) => { e.stopPropagation(); onLoadSample?.(); }}
+          >
             Try with sample data
           </button>
         </div>
