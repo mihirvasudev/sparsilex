@@ -77,6 +77,7 @@ export interface AnalysisResult {
   code?: { r: string; python: string };
   apa_text?: string;
   plots?: Array<{ title: string; image_base64: string }>;
+  plotly?: Array<{ title: string; plotly: { data: Record<string, unknown>[]; layout: Record<string, unknown> } }>;
 }
 
 // Agent types

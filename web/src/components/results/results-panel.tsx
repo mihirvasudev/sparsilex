@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { AnalysisResult } from "@/lib/types";
 import { StatsTable } from "./stats-table";
+import { InteractivePlot } from "./interactive-plot";
 import { AssumptionChecks } from "./assumption-checks";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -127,7 +128,14 @@ export function ResultsPanel({ results }: ResultsPanelProps) {
             <div className="p-3 space-y-3">
               <StatsTable statistics={result.statistics} testName={result.test_name} />
 
-              {result.plots && result.plots.length > 0 && (
+              {/* Interactive Plotly charts (preferred) */}
+              {result.plotly && result.plotly.length > 0 ? (
+                <div className="space-y-2">
+                  {result.plotly.map((plot, pi) => (
+                    <InteractivePlot key={pi} title={plot.title} spec={plot.plotly} />
+                  ))}
+                </div>
+              ) : result.plots && result.plots.length > 0 ? (
                 <div className="space-y-2">
                   {result.plots.map((plot, pi) => (
                     <div key={pi}>
@@ -140,7 +148,7 @@ export function ResultsPanel({ results }: ResultsPanelProps) {
                     </div>
                   ))}
                 </div>
-              )}
+              ) : null}
 
               {result.apa_text && <APAText text={result.apa_text} />}
 

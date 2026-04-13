@@ -5,6 +5,7 @@ from services.data_service import get_dataset
 from services.code_export import generate_code
 from services.apa_format import format_apa
 from services.diagnostic_plots import generate_plots
+from services.plotly_plots import generate_plotly
 
 router = APIRouter()
 
@@ -23,4 +24,5 @@ async def run_analysis_endpoint(req: RunRequest):
     result["code"] = generate_code(req.test_name, req.variables, req.options)
     result["apa_text"] = format_apa(req.test_name, result.get("statistics", {}))
     result["plots"] = generate_plots(req.test_name, df, req.variables, result.get("statistics", {}))
+    result["plotly"] = generate_plotly(req.test_name, df, req.variables, result.get("statistics", {}))
     return result
