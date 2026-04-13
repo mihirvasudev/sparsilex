@@ -9,6 +9,7 @@ import { DataGrid } from "@/components/data/data-grid";
 import { ColumnStats } from "@/components/data/column-stats";
 import { generateSampleCSV } from "@/lib/sample-data";
 import { WelcomeScreen } from "@/components/layout/welcome-screen";
+import { OnboardingTour } from "@/components/layout/onboarding-tour";
 import { AnalysisOptions } from "@/components/analysis/analysis-options";
 import { ResultsPanel } from "@/components/results/results-panel";
 import { AgentPanel } from "@/components/agent/agent-panel";
@@ -27,6 +28,7 @@ export default function AnalyzePage() {
   const [cleaningOpen, setCleaningOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<ColumnInfo | null>(null);
   const [isAiSuggested, setIsAiSuggested] = useState(false);
+  const [showTour, setShowTour] = useState(false);
 
   // Save project
   const handleSave = useCallback(async () => {
@@ -81,6 +83,8 @@ export default function AnalyzePage() {
 
   const handleLoadSample = useCallback(() => {
     dataset.uploadFile(generateSampleCSV());
+    // Show tour after data loads
+    setTimeout(() => setShowTour(true), 1500);
   }, [dataset]);
 
   const handleAgentSend = useCallback(
@@ -197,6 +201,7 @@ export default function AnalyzePage() {
         </div>
       </div>
       )}
+      <OnboardingTour active={showTour} onComplete={() => setShowTour(false)} />
     </div>
   );
 }
