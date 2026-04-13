@@ -44,12 +44,17 @@ export interface OptionDef {
   default: boolean | number | string;
   label: string;
   depends_on?: string;
-  choices?: string[];
+  choices?: { value: string; label: string }[];
+  group?: string; // collapsible section name
+  min?: number;
+  max?: number;
+  step?: number;
 }
 
 export interface AnalysisDef {
   display_name: string;
   category: string;
+  description?: string;
   variables: VariableSlotDef[];
   options: OptionDef[];
 }
