@@ -49,6 +49,28 @@ export default function AnalyzePage() {
     onToggleAgent: () => setAgentOpen((o) => !o),
   });
 
+  // Share project
+  const handleShare = useCallback(async () => {
+    if (!dataset.datasetId) return;
+    try {
+      const res = await fetch(`${API}/api/share/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dataset_id: dataset.datasetId,
+          analyses: analysis.results,
+          title: dataset.filename || "SparsileX Analysis",
+        }),
+      });
+      const data = await res.json();
+      const url = `${window.location.origin}/shared/${data.share_id}`;
+      await navigator.clipboard.writeText(url);
+      alert(`Share link copied to clipboard!\n${url}`);
+    } catch {
+      alert("Failed to create share link");
+    }
+  }, [dataset.datasetId, dataset.filename, analysis.results]);
+
   // Handle agent UI actions (e.g., pre-fill analysis panel)
   agent.setUiActionHandler(
     useCallback(
@@ -103,6 +125,7 @@ export default function AnalyzePage() {
         onToggleAgent={() => setAgentOpen((o) => !o)}
         onToggleCleaning={() => setCleaningOpen((o) => !o)}
         onSave={handleSave}
+        onShare={handleShare}
         agentOpen={agentOpen}
         cleaningOpen={cleaningOpen}
         hasData={!!dataset.datasetId}

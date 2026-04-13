@@ -14,6 +14,7 @@ interface AppHeaderProps {
   onToggleAgent: () => void;
   onToggleCleaning: () => void;
   onSave: () => void;
+  onShare: () => void;
   agentOpen: boolean;
   cleaningOpen: boolean;
   hasData: boolean;
@@ -24,6 +25,7 @@ export function AppHeader({
   onToggleAgent,
   onToggleCleaning,
   onSave,
+  onShare,
   agentOpen,
   cleaningOpen,
   hasData,
@@ -87,6 +89,16 @@ export function AppHeader({
           title="Save project (Cmd+S)"
         >
           Save
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={onShare}
+          disabled={!hasData}
+          title="Share project"
+        >
+          Share
         </Button>
         <div className="w-px h-4 bg-border" />
         <Button
