@@ -71,6 +71,7 @@ export interface AnalysisResult {
   assumption_checks: Record<string, AssumptionCheck>;
   code?: { r: string; python: string };
   apa_text?: string;
+  plots?: Array<{ title: string; image_base64: string }>;
 }
 
 // Agent types

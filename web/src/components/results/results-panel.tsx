@@ -127,6 +127,21 @@ export function ResultsPanel({ results }: ResultsPanelProps) {
             <div className="p-3 space-y-3">
               <StatsTable statistics={result.statistics} testName={result.test_name} />
 
+              {result.plots && result.plots.length > 0 && (
+                <div className="space-y-2">
+                  {result.plots.map((plot, pi) => (
+                    <div key={pi}>
+                      <p className="text-[10px] text-muted-foreground mb-1">{plot.title}</p>
+                      <img
+                        src={`data:image/png;base64,${plot.image_base64}`}
+                        alt={plot.title}
+                        className="w-full rounded border border-border/30"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {result.apa_text && <APAText text={result.apa_text} />}
 
               {postHoc && postHoc.length > 0 && <PostHocTable postHoc={postHoc} />}
