@@ -18,6 +18,9 @@ interface AppHeaderProps {
   agentOpen: boolean;
   cleaningOpen: boolean;
   hasData: boolean;
+  filename?: string | null;
+  rows?: number;
+  columnCount?: number;
 }
 
 export function AppHeader({
@@ -29,6 +32,9 @@ export function AppHeader({
   agentOpen,
   cleaningOpen,
   hasData,
+  filename,
+  rows,
+  columnCount,
 }: AppHeaderProps) {
   return (
     <header className="flex items-center h-10 border-b border-border bg-card/80 backdrop-blur-sm px-3 gap-1 shrink-0">
@@ -36,6 +42,18 @@ export function AppHeader({
         <span className="font-bold text-sm tracking-tight bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">SparsileX</span>
         <span className="text-[9px] text-muted-foreground/60 font-mono">0.1</span>
       </div>
+
+      {/* Dataset info pill */}
+      {hasData && filename && (
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-muted/40 border border-border/40 mr-3">
+          <span className="text-[10px] text-muted-foreground/70 max-w-[120px] truncate">{filename}</span>
+          {rows !== undefined && columnCount !== undefined && (
+            <span className="text-[9px] text-muted-foreground/40 font-mono shrink-0">
+              {rows.toLocaleString()}r × {columnCount}c
+            </span>
+          )}
+        </div>
+      )}
 
       <nav className="flex items-center gap-0.5">
         {ANALYSIS_CATEGORIES.map((cat) => {

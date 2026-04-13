@@ -86,5 +86,20 @@ export function useAnalysis() {
     }));
   }, []);
 
-  return { ...state, selectTest, setVariable, setOption, prefill, run, clearSelection };
+  const removeResult = useCallback((resultId: string) => {
+    setState((s) => ({
+      ...s,
+      results: s.results.filter((r) => r.result_id !== resultId),
+    }));
+  }, []);
+
+  const clearResults = useCallback(() => {
+    setState((s) => ({ ...s, results: [] }));
+  }, []);
+
+  const restoreResults = useCallback((results: AnalysisResult[]) => {
+    setState((s) => ({ ...s, results }));
+  }, []);
+
+  return { ...state, selectTest, setVariable, setOption, prefill, run, clearSelection, removeResult, clearResults, restoreResults };
 }

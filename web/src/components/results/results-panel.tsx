@@ -9,6 +9,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 interface ResultsPanelProps {
   results: AnalysisResult[];
+  onRemove?: (resultId: string) => void;
+  onClearAll?: () => void;
 }
 
 function PostHocTable({ postHoc }: { postHoc: Array<Record<string, unknown>> }) {
@@ -111,19 +113,41 @@ function APAText({ text }: { text: string }) {
   );
 }
 
-export function ResultsPanel({ results }: ResultsPanelProps) {
+export function ResultsPanel({ results, onRemove, onClearAll }: ResultsPanelProps) {
   if (results.length === 0) return null;
 
   return (
     <div className="space-y-3">
+      {results.length > 1 && (
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[10px] text-muted-foreground/60">{results.length} results</span>
+          <button
+            onClick={onClearAll}
+            className="text-[10px] text-muted-foreground/50 hover:text-destructive transition-colors"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
       {results.map((result, i) => {
         const stats = result.statistics as Record<string, unknown>;
         const postHoc = stats.post_hoc as Array<Record<string, unknown>> | undefined;
+        const runNumber = i + 1;
 
         return (
-          <div key={result.result_id || i} className="border border-border rounded-lg bg-card">
-            <div className="px-3 py-2 border-b border-border">
-              <h3 className="text-sm font-medium">{result.test_display_name}</h3>
+          <div key={result.result_id || i} className="border border-border rounded-lg bg-card animate-slide-up">
+            <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+              <span className="text-[9px] font-mono text-muted-foreground/40 shrink-0">#{runNumber}</span>
+              <h3 className="text-sm font-medium flex-1 truncate">{result.test_display_name}</h3>
+              {onRemove && (
+                <button
+                  onClick={() => onRemove(result.result_id)}
+                  className="text-muted-foreground/30 hover:text-muted-foreground transition-colors text-xs shrink-0 leading-none"
+                  title="Remove result"
+                >
+                  ✕
+                </button>
+              )}
             </div>
             <div className="p-3 space-y-3">
               <StatsTable statistics={result.statistics} testName={result.test_name} />

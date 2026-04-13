@@ -44,9 +44,27 @@ export function AgentPanel({ steps, isRunning, onSend, error }: AgentPanelProps)
       <ScrollArea className="flex-1 min-h-0" ref={scrollRef}>
         <div className="p-3 space-y-2">
           {steps.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-8">
-              Ask a question about your data. The agent will inspect, clean, analyze, and interpret.
-            </p>
+            <div className="py-4 space-y-3">
+              <p className="text-xs text-muted-foreground text-center">
+                Describe what you want to know. The agent inspects, analyzes, and interprets.
+              </p>
+              <div className="space-y-1.5">
+                {[
+                  "Explore this dataset and suggest relevant analyses",
+                  "Are there significant differences between groups?",
+                  "Check assumptions and run the most appropriate test",
+                  "Summarize key findings in APA format",
+                ].map((prompt) => (
+                  <button
+                    key={prompt}
+                    onClick={() => { setInput(prompt); }}
+                    className="w-full text-left text-[10px] text-muted-foreground/60 hover:text-muted-foreground bg-muted/20 hover:bg-muted/40 rounded px-2.5 py-1.5 transition-colors truncate"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           {steps.map((step) => (
             <AgentStepView key={step.id} step={step} />

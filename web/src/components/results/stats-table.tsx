@@ -22,6 +22,27 @@ function fmt(key: string, value: unknown): string {
   return n.toFixed(3);
 }
 
+function fmtBF(bf: number): string {
+  if (bf >= 1e6) return `${(bf / 1e6).toFixed(1)}M`;
+  if (bf >= 1000) return `${(bf / 1000).toFixed(1)}K`;
+  if (bf >= 100) return bf.toFixed(0);
+  if (bf >= 10) return bf.toFixed(1);
+  return bf.toFixed(2);
+}
+
+function bfLabel(bf: number): string {
+  const b = bf >= 1 ? bf : 1 / bf;
+  const dir = bf >= 1 ? "H₁" : "H₀";
+  let strength: string;
+  if (b >= 100) strength = "decisive";
+  else if (b >= 30) strength = "very strong";
+  else if (b >= 10) strength = "strong";
+  else if (b >= 3) strength = "moderate";
+  else if (b >= 1) strength = "anecdotal";
+  else strength = "negligible";
+  return `${strength} evidence for ${dir}`;
+}
+
 function pFmt(v: unknown): string { return fmt("p", v); }
 
 function effectLabel(d: number): string {
@@ -267,9 +288,18 @@ export function StatsTable({ statistics, testName }: StatsTableProps) {
     );
   }
 
+  // Bayes Factor special display
+  const bf10 = s.bf10 !== undefined ? Number(s.bf10) : undefined;
+
   // Build badges
   const badges: Array<{ text: string; color?: string }> = [];
-  if (s.p_value !== undefined) {
+  if (bf10 !== undefined) {
+    badges.push({
+      text: `BF₁₀ = ${fmtBF(bf10)}`,
+      color: bf10 >= 3 || bf10 <= 1/3 ? "text-primary border-primary/30" : undefined,
+    });
+    badges.push({ text: bfLabel(bf10) });
+  } else if (s.p_value !== undefined) {
     badges.push({ text: `${sig ? "Significant" : "Not significant"} (p ${pFmt(s.p_value)})`, color: sig ? "text-green-400 border-green-500/30" : undefined });
   }
   if (s.cohens_d !== undefined) badges.push({ text: `${effectLabel(Number(s.cohens_d))} effect` });
@@ -284,6 +314,11 @@ export function StatsTable({ statistics, testName }: StatsTableProps) {
   if (s.effect_size_r !== undefined) badges.push({ text: `r = ${fmt("", s.effect_size_r)}` });
   if (s.epsilon_squared !== undefined) badges.push({ text: `\u03B5\u00B2 = ${fmt("", s.epsilon_squared)}` });
   if (s.odds_ratio !== undefined && testName === "fisher_exact") badges.push({ text: `OR = ${fmt("", s.odds_ratio)}` });
+  // Reliability
+  if (s.alpha !== undefined) badges.push({ text: `\u03B1 = ${fmt("", s.alpha)}`, color: Number(s.alpha) >= 0.7 ? "text-green-400 border-green-500/30" : undefined });
+  // CFA fit
+  if (s.cfi !== undefined) badges.push({ text: `CFI = ${fmt("", s.cfi)}`, color: Number(s.cfi) >= 0.95 ? "text-green-400 border-green-500/30" : undefined });
+  if (s.rmsea !== undefined) badges.push({ text: `RMSEA = ${fmt("", s.rmsea)}`, color: Number(s.rmsea) <= 0.06 ? "text-green-400 border-green-500/30" : undefined });
 
   // Build key-value rows
   const rows: Array<{ label: string; value: string; highlight?: boolean }> = [];
@@ -349,6 +384,41 @@ export function StatsTable({ statistics, testName }: StatsTableProps) {
   if (s.median_var2 !== undefined) rows.push({ label: `Median (${s.var2_label || "Var 2"})`, value: fmt("m", s.median_var2) });
   add("n", "n");
   add("successes", "Successes");
+
+  // Bayesian
+  if (bf10 !== undefined) rows.push({ label: "BF₁₀", value: fmtBF(bf10), highlight: true });
+  add("bf01", "BF₀₁");
+  add("prior_scale", "Prior scale");
+  add("error_pct", "Error %");
+
+  // Mixed model variance components
+  add("icc", "ICC");
+  add("marginal_r2", "Marginal R²");
+  add("conditional_r2", "Conditional R²");
+  add("random_effect_var", "Random effect var.");
+  add("residual_var", "Residual var.");
+
+  // Reliability
+  add("alpha", "Cronbach's \u03B1");
+  add("omega", "\u03C9");
+  add("mean_r", "Mean inter-item r");
+
+  // CFA / SEM fit
+  add("cfi", "CFI");
+  add("tli", "TLI");
+  add("rmsea", "RMSEA");
+  add("srmr", "SRMR");
+  add("aic", "AIC");
+  add("bic", "BIC");
+  add("chi_square_fit", "\u03C7\u00B2 (fit)");
+  add("df_fit", "df (fit)");
+  add("p_fit", "p (fit)");
+
+  // Power analysis
+  add("power", "Power (1−\u03B2)");
+  add("required_n", "Required n");
+  add("effect_size", "Effect size");
+  add("alpha_level", "\u03B1 level");
 
   const coefficients = s.coefficients as Array<Record<string, unknown>> | undefined;
   const groups = s.groups as Array<Record<string, unknown>> | undefined;

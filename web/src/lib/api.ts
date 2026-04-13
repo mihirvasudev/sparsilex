@@ -42,6 +42,21 @@ export async function runAnalysis(
   return res.json();
 }
 
+export async function loadProject(file: File): Promise<{
+  dataset_id: string;
+  filename: string;
+  rows: number;
+  columns: import("./types").ColumnInfo[];
+  preview: Record<string, unknown>[];
+  analyses: AnalysisResult[];
+}> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API}/api/project/load`, { method: "POST", body: form });
+  if (!res.ok) throw new Error(`Load failed: ${res.statusText}`);
+  return res.json();
+}
+
 export function streamAgentChat(
   datasetId: string,
   message: string,

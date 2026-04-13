@@ -15,6 +15,7 @@ import { ResultsPanel } from "@/components/results/results-panel";
 import { AgentPanel } from "@/components/agent/agent-panel";
 import { DataCleaning } from "@/components/data/data-cleaning";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { loadProject } from "@/lib/api";
 import type { ColumnInfo } from "@/lib/types";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -109,6 +110,19 @@ export default function AnalyzePage() {
     setTimeout(() => setShowTour(true), 1500);
   }, [dataset]);
 
+  const handleLoadProject = useCallback(async (file: File) => {
+    try {
+      const proj = await loadProject(file);
+      dataset.loadFromProject(proj);
+      // Restore saved analyses
+      if (proj.analyses?.length) {
+        analysis.restoreResults(proj.analyses);
+      }
+    } catch (err) {
+      alert(`Failed to load project: ${err instanceof Error ? err.message : "Unknown error"}`);
+    }
+  }, [dataset, analysis]);
+
   const handleAgentSend = useCallback(
     (message: string) => {
       if (dataset.datasetId) {
@@ -129,10 +143,18 @@ export default function AnalyzePage() {
         agentOpen={agentOpen}
         cleaningOpen={cleaningOpen}
         hasData={!!dataset.datasetId}
+        filename={dataset.filename}
+        rows={dataset.rows}
+        columnCount={dataset.columns.length}
       />
 
       {!dataset.datasetId ? (
-        <WelcomeScreen onUpload={dataset.uploadFile} onLoadSample={handleLoadSample} isLoading={dataset.isLoading} />
+        <WelcomeScreen
+          onUpload={dataset.uploadFile}
+          onLoadSample={handleLoadSample}
+          onLoadProject={handleLoadProject}
+          isLoading={dataset.isLoading}
+        />
       ) : (
       <div className="flex flex-1 min-h-0">
         {/* Left: Data Grid */}
@@ -195,7 +217,11 @@ export default function AnalyzePage() {
             )}
 
             {/* Accumulated results */}
-            <ResultsPanel results={analysis.results} />
+            <ResultsPanel
+              results={analysis.results}
+              onRemove={analysis.removeResult}
+              onClearAll={analysis.clearResults}
+            />
 
             {/* Empty state */}
             {!analysis.selectedTest && analysis.results.length === 0 && dataset.datasetId && (

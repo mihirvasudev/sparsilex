@@ -67,5 +67,23 @@ export function useDataset() {
     }));
   }, []);
 
-  return { ...state, uploadFile, reset, refreshFromCleaningResult };
+  const loadFromProject = useCallback((proj: {
+    dataset_id: string;
+    filename: string;
+    rows: number;
+    columns: ColumnInfo[];
+    preview: Record<string, unknown>[];
+  }) => {
+    setState({
+      datasetId: proj.dataset_id,
+      filename: proj.filename,
+      rows: proj.rows,
+      columns: proj.columns,
+      preview: proj.preview,
+      isLoading: false,
+      error: null,
+    });
+  }, []);
+
+  return { ...state, uploadFile, reset, refreshFromCleaningResult, loadFromProject };
 }
