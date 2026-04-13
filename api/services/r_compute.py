@@ -1,125 +1,121 @@
-"""R compute bridge — execute R code via rpy2 and convert results to Python."""
+"""R compute bridge — execute R code via subprocess Rscript.
+
+Uses CSV for data transfer and JSON for result transfer.
+No rpy2 required — works with any R version.
+"""
 import json
+import subprocess
+import tempfile
+import os
+import shutil
 import pandas as pd
+from pathlib import Path
 
-_R_AVAILABLE = False
-
-try:
-    import rpy2.robjects as ro
-    from rpy2.robjects import pandas2ri, conversion, default_converter
-    from rpy2.robjects.packages import importr
-
-    # Activate pandas conversion
-    pandas2ri.activate()
-    _R_AVAILABLE = True
-except ImportError:
-    pass
+# Check if Rscript is available
+_R_PATH = shutil.which("Rscript") or "/usr/local/bin/Rscript"
+_R_AVAILABLE = os.path.exists(_R_PATH)
 
 
 def is_r_available() -> bool:
     return _R_AVAILABLE
 
 
-def _convert_r_to_python(obj) -> object:
-    """Recursively convert R objects to Python dicts/lists/values."""
-    if not _R_AVAILABLE:
-        return None
-
-    # NULL
-    if obj == ro.NULL or obj is None:
-        return None
-
-    # Named list (most common R result type)
-    if hasattr(obj, "names") and obj.names != ro.NULL:
-        names = list(obj.names)
-        if names and names[0] is not None:
-            result = {}
-            for i, name in enumerate(names):
-                try:
-                    val = obj[i]
-                    result[str(name)] = _convert_r_to_python(val)
-                except Exception:
-                    result[str(name)] = None
-            return result
-
-    # Vector types
-    if hasattr(obj, "__len__") and not isinstance(obj, str):
-        try:
-            vals = list(obj)
-            if len(vals) == 1:
-                v = vals[0]
-                if isinstance(v, (int, float)):
-                    return round(float(v), 6) if isinstance(v, float) else v
-                return str(v) if v is not None else None
-            return [round(float(v), 6) if isinstance(v, float) else v for v in vals]
-        except Exception:
-            pass
-
-    # Scalar
-    try:
-        return float(obj)
-    except (TypeError, ValueError):
-        pass
-
-    return str(obj)
-
-
-def run_r(code: str, df: pd.DataFrame | None = None) -> dict:
-    """Execute R code with an optional dataframe. Returns parsed result dict."""
-    if not _R_AVAILABLE:
-        return {"error": "R is not available. Install R and rpy2."}
-
-    try:
-        if df is not None:
-            with conversion.localconverter(default_converter + pandas2ri.converter):
-                ro.globalenv["df"] = pandas2ri.py2rpy(df)
-
-        result = ro.r(code)
-        return {"result": _convert_r_to_python(result)}
-    except Exception as e:
-        return {"error": f"R error: {str(e)}"}
-
-
-def run_r_analysis(r_code: str, df: pd.DataFrame, parse_code: str | None = None) -> dict:
-    """Run an R analysis and optionally parse the result with additional R code.
-
-    Args:
-        r_code: Main analysis R code (result stored in `result`)
-        df: Data as pandas DataFrame
-        parse_code: Optional R code to extract values from `result` into a named list
-    """
-    if not _R_AVAILABLE:
-        return {"error": "R is not available. Install R and rpy2."}
-
-    try:
-        with conversion.localconverter(default_converter + pandas2ri.converter):
-            ro.globalenv["df"] = pandas2ri.py2rpy(df)
-
-        # Run the analysis
-        ro.r(f"result <- {r_code}")
-
-        # Parse results
-        if parse_code:
-            parsed = ro.r(parse_code)
-            return _convert_r_to_python(parsed)
-        else:
-            result = ro.r("result")
-            return _convert_r_to_python(result)
-
-    except Exception as e:
-        return {"error": f"R error: {str(e)}"}
-
-
 def ensure_r_packages(packages: list[str]) -> dict[str, bool]:
     """Check which R packages are installed."""
     if not _R_AVAILABLE:
         return {p: False for p in packages}
+    code = f"""
+pkgs <- c({", ".join(f'"{p}"' for p in packages)})
+status <- sapply(pkgs, function(p) p %in% rownames(installed.packages()))
+cat(jsonlite::toJSON(as.list(status)))
+"""
+    try:
+        result = subprocess.run(
+            [_R_PATH, "--vanilla", "-e", code],
+            capture_output=True, text=True, timeout=30
+        )
+        data = json.loads(result.stdout.strip())
+        return {p: bool(data.get(p, [False])[0] if isinstance(data.get(p), list) else data.get(p, False))
+                for p in packages}
+    except Exception:
+        return {p: False for p in packages}
 
-    status = {}
-    for pkg in packages:
+
+def run_r_analysis(r_code: str, df: pd.DataFrame, result_code: str | None = None, libraries: list[str] | None = None) -> dict:
+    """Run R analysis on a DataFrame.
+
+    Args:
+        r_code: R expression to evaluate (result stored in `result`)
+        df: Input data as pandas DataFrame
+        result_code: R code to extract/transform `result` into a named list
+                     (should produce output readable by jsonlite::toJSON)
+    Returns:
+        dict with analysis results or {"error": "..."}
+    """
+    if not _R_AVAILABLE:
+        return {"error": f"R not found at {_R_PATH}. Install R from https://cran.r-project.org"}
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        data_path = os.path.join(tmpdir, "data.csv")
+        out_path = os.path.join(tmpdir, "result.json")
+
+        # Write DataFrame to CSV
+        df.to_csv(data_path, index=False)
+
+        # Build R script
+        extract = result_code or "result"
+        lib_lines = "\n".join(f'library({lib})' for lib in (libraries or []))
+        script = f"""
+library(jsonlite)
+{lib_lines}
+df <- read.csv("{data_path}", stringsAsFactors = TRUE)
+tryCatch({{
+  result <- {r_code}
+  output <- {extract}
+  write(toJSON(output, auto_unbox = TRUE, digits = 6, na = "null"), "{out_path}")
+}}, error = function(e) {{
+  write(toJSON(list(error = conditionMessage(e)), auto_unbox = TRUE), "{out_path}")
+}})
+"""
+        script_path = os.path.join(tmpdir, "analysis.R")
+        Path(script_path).write_text(script)
+
         try:
-            importr(pkg)
-            status[pkg] = True
-        except Exception:
-            status[pkg] = False
-    return status
+            proc = subprocess.run(
+                [_R_PATH, "--vanilla", script_path],
+                capture_output=True, text=True, timeout=120
+            )
+            if not os.path.exists(out_path):
+                stderr = proc.stderr.strip()
+                return {"error": f"R produced no output. stderr: {stderr[:500]}"}
+
+            with open(out_path) as f:
+                data = json.load(f)
+
+            # Unwrap single-element arrays (jsonlite wraps scalars)
+            return _unwrap(data)
+
+        except subprocess.TimeoutExpired:
+            return {"error": "R analysis timed out (>120s)"}
+        except json.JSONDecodeError as e:
+            return {"error": f"R output was not valid JSON: {e}"}
+        except Exception as e:
+            return {"error": f"R bridge error: {str(e)}"}
+
+
+def run_r(code: str, df: pd.DataFrame | None = None) -> dict:
+    """Simple R execution — wraps run_r_analysis."""
+    if df is None:
+        df = pd.DataFrame()
+    return {"result": run_r_analysis(code, df)}
+
+
+def _unwrap(obj):
+    """Recursively unwrap single-element lists from jsonlite auto_unbox output."""
+    if isinstance(obj, dict):
+        return {k: _unwrap(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        if len(obj) == 1:
+            return _unwrap(obj[0])
+        return [_unwrap(v) for v in obj]
+    return obj

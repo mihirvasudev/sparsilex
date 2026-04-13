@@ -700,7 +700,8 @@ def _run_bayesian_ttest_ind(df: pd.DataFrame, variables: dict, options: dict) ->
     res = run_r_analysis(
         f'BayesFactor::ttestBF(formula = {dep} ~ {grp}, data = df)',
         df,
-        'list(bf10 = as.numeric(extractBF(result)$bf))'
+        'list(bf10 = as.numeric(BayesFactor::extractBF(result)$bf))',
+        libraries=["BayesFactor"]
     )
     if "error" in res:
         return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "bayesian_ttest_ind", "test_display_name": "Bayesian Independent T-Test",
@@ -717,7 +718,8 @@ def _run_bayesian_ttest_paired(df: pd.DataFrame, variables: dict, options: dict)
     res = run_r_analysis(
         f'BayesFactor::ttestBF(x = df${v1}, y = df${v2}, paired = TRUE)',
         df,
-        'list(bf10 = as.numeric(extractBF(result)$bf))'
+        'list(bf10 = as.numeric(BayesFactor::extractBF(result)$bf))',
+        libraries=["BayesFactor"]
     )
     if "error" in res:
         return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "bayesian_ttest_paired", "test_display_name": "Bayesian Paired T-Test",
@@ -734,7 +736,8 @@ def _run_bayesian_anova(df: pd.DataFrame, variables: dict, options: dict) -> dic
     res = run_r_analysis(
         f'BayesFactor::anovaBF(formula = {dep} ~ {fac}, data = df)',
         df,
-        'list(bf10 = as.numeric(extractBF(result)$bf[1]))'
+        'list(bf10 = as.numeric(BayesFactor::extractBF(result)$bf[1]))',
+        libraries=["BayesFactor"]
     )
     if "error" in res:
         return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "bayesian_anova", "test_display_name": "Bayesian ANOVA",
@@ -751,7 +754,8 @@ def _run_bayesian_correlation(df: pd.DataFrame, variables: dict, options: dict) 
     res = run_r_analysis(
         f'BayesFactor::correlationBF(df${v1}, df${v2})',
         df,
-        'list(bf10 = as.numeric(extractBF(result)$bf))'
+        'list(bf10 = as.numeric(BayesFactor::extractBF(result)$bf))',
+        libraries=["BayesFactor"]
     )
     if "error" in res:
         return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "bayesian_correlation", "test_display_name": "Bayesian Correlation",
@@ -775,9 +779,10 @@ def _run_linear_mixed_model(df: pd.DataFrame, variables: dict, options: dict) ->
             aic = as.numeric(AIC(result)),
             bic = as.numeric(BIC(result)),
             loglik = as.numeric(logLik(result)),
-            rand_var = as.numeric(VarCorr(result)[[1]][1]),
-            resid_var = as.numeric(attr(VarCorr(result), "sc")^2)
-        )'''
+            rand_var = as.numeric(lme4::VarCorr(result)[[1]][1]),
+            resid_var = as.numeric(attr(lme4::VarCorr(result), "sc")^2)
+        )''',
+        libraries=["lme4"]
     )
     if "error" in res:
         return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "linear_mixed_model", "test_display_name": "Linear Mixed Model",
@@ -801,7 +806,8 @@ def _run_cronbach_alpha(df: pd.DataFrame, variables: dict, options: dict) -> dic
             std_alpha = as.numeric(result$total$std.alpha),
             avg_r = as.numeric(result$total$average_r),
             n_items = length(result$alpha.drop$raw_alpha)
-        )'''
+        )''',
+        libraries=["psych"]
     )
     if "error" in res:
         return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "cronbach_alpha", "test_display_name": "Reliability (Cronbach's Alpha)",
@@ -819,14 +825,15 @@ def _run_cfa(df: pd.DataFrame, variables: dict, options: dict) -> dict:
         f"lavaan::cfa('{model}', data = df)",
         df,
         '''list(
-            cfi = as.numeric(fitMeasures(result, "cfi")),
-            tli = as.numeric(fitMeasures(result, "tli")),
-            rmsea = as.numeric(fitMeasures(result, "rmsea")),
-            srmr = as.numeric(fitMeasures(result, "srmr")),
-            chisq = as.numeric(fitMeasures(result, "chisq")),
-            df = as.numeric(fitMeasures(result, "df")),
-            pval = as.numeric(fitMeasures(result, "pvalue"))
-        )'''
+            cfi = as.numeric(lavaan::fitMeasures(result, "cfi")),
+            tli = as.numeric(lavaan::fitMeasures(result, "tli")),
+            rmsea = as.numeric(lavaan::fitMeasures(result, "rmsea")),
+            srmr = as.numeric(lavaan::fitMeasures(result, "srmr")),
+            chisq = as.numeric(lavaan::fitMeasures(result, "chisq")),
+            df_fit = as.numeric(lavaan::fitMeasures(result, "df")),
+            pval = as.numeric(lavaan::fitMeasures(result, "pvalue"))
+        )''',
+        libraries=["lavaan"]
     )
     if "error" in res:
         return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "cfa", "test_display_name": "CFA",
@@ -845,7 +852,8 @@ def _run_power_ttest(df: pd.DataFrame, variables: dict, options: dict) -> dict:
     res = run_r_analysis(
         f'pwr::pwr.t.test(d={d}, sig.level={alpha}, power={power}, type="two.sample")',
         df,
-        'list(n = ceiling(as.numeric(result$n)))'
+        'list(n = ceiling(as.numeric(result$n)))',
+        libraries=["pwr"]
     )
     if "error" in res:
         return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "power_ttest", "test_display_name": "Power Analysis (T-Test)",
@@ -864,7 +872,8 @@ def _run_power_anova(df: pd.DataFrame, variables: dict, options: dict) -> dict:
     res = run_r_analysis(
         f'pwr::pwr.anova.test(f={f}, k={k}, sig.level={alpha}, power={power})',
         df,
-        'list(n = ceiling(as.numeric(result$n)))'
+        'list(n = ceiling(as.numeric(result$n)))',
+        libraries=["pwr"]
     )
     if "error" in res:
         return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "power_anova", "test_display_name": "Power Analysis (ANOVA)",
