@@ -60,7 +60,7 @@ TOOL_DEFINITIONS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "test_name": {"type": "string", "enum": ["descriptives", "one_sample_ttest", "independent_ttest", "welch_ttest", "paired_ttest", "mann_whitney", "wilcoxon", "one_way_anova", "repeated_measures_anova", "ancova", "kruskal_wallis", "linear_regression", "logistic_regression", "pearson_correlation", "spearman_correlation", "chi_square", "fisher_exact", "binomial_test", "multinomial_test", "pca"]},
+                "test_name": {"type": "string", "enum": ["descriptives", "one_sample_ttest", "independent_ttest", "welch_ttest", "paired_ttest", "mann_whitney", "wilcoxon", "one_way_anova", "repeated_measures_anova", "ancova", "kruskal_wallis", "linear_regression", "logistic_regression", "pearson_correlation", "spearman_correlation", "chi_square", "fisher_exact", "binomial_test", "multinomial_test", "pca", "bayesian_ttest_ind", "bayesian_ttest_paired", "bayesian_anova", "bayesian_correlation", "linear_mixed_model", "cronbach_alpha", "cfa", "power_ttest", "power_anova"]},
                 "variables": {"type": "object"},
             },
             "required": ["test_name", "variables"],
@@ -72,7 +72,7 @@ TOOL_DEFINITIONS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "test_name": {"type": "string", "enum": ["descriptives", "one_sample_ttest", "independent_ttest", "welch_ttest", "paired_ttest", "mann_whitney", "wilcoxon", "one_way_anova", "repeated_measures_anova", "ancova", "kruskal_wallis", "linear_regression", "logistic_regression", "pearson_correlation", "spearman_correlation", "chi_square", "fisher_exact", "binomial_test", "multinomial_test", "pca"]},
+                "test_name": {"type": "string", "enum": ["descriptives", "one_sample_ttest", "independent_ttest", "welch_ttest", "paired_ttest", "mann_whitney", "wilcoxon", "one_way_anova", "repeated_measures_anova", "ancova", "kruskal_wallis", "linear_regression", "logistic_regression", "pearson_correlation", "spearman_correlation", "chi_square", "fisher_exact", "binomial_test", "multinomial_test", "pca", "bayesian_ttest_ind", "bayesian_ttest_paired", "bayesian_anova", "bayesian_correlation", "linear_mixed_model", "cronbach_alpha", "cfa", "power_ttest", "power_anova"]},
                 "variables": {"type": "object"},
                 "options": {"type": "object"},
             },

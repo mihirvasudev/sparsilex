@@ -26,6 +26,16 @@ def run_analysis(test_name: str, df: pd.DataFrame, variables: dict, options: dic
         "multinomial_test": _run_multinomial_test,
         "fisher_exact": _run_fisher_exact,
         "pca": _run_pca,
+        # R-based analyses
+        "bayesian_ttest_ind": _run_bayesian_ttest_ind,
+        "bayesian_ttest_paired": _run_bayesian_ttest_paired,
+        "bayesian_anova": _run_bayesian_anova,
+        "bayesian_correlation": _run_bayesian_correlation,
+        "linear_mixed_model": _run_linear_mixed_model,
+        "cronbach_alpha": _run_cronbach_alpha,
+        "cfa": _run_cfa,
+        "power_ttest": _run_power_ttest,
+        "power_anova": _run_power_anova,
     }
     if test_name not in dispatch:
         raise ValueError(f"Unknown test: {test_name}")
@@ -654,4 +664,211 @@ def _run_pca(df: pd.DataFrame, variables: dict, options: dict) -> dict:
         comps.append({"component": i+1, "eigenvalue": round(float(eigvals[i]), 4), "variance_pct": round(float(eigvals[i]/tv*100), 2), "cumulative_pct": round(float(np.sum(eigvals[:i+1])/tv*100), 2), "loadings": ld})
     return {"result_id": f"res-{np.random.randint(1000, 9999)}", "test_name": "pca", "test_display_name": "Principal Component Analysis",
         "statistics": {"n_components_extracted": nc, "total_variance_explained": round(float(np.sum(eigvals[:nc])/tv*100), 2), "n": n, "components": comps},
+        "assumption_checks": {}}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# R-BASED ANALYSES — Phase 2 (Bayesian, Mixed Models, CFA, Reliability, Power)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from services.r_compute import is_r_available, run_r_analysis
+
+def _r_or_error(name):
+    if not is_r_available():
+        return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "error", "test_display_name": name,
+            "statistics": {"error": f"{name} requires R. Install R and rpy2 to use this analysis."},
+            "assumption_checks": {}}
+    return None
+
+def _bf_interpret(bf):
+    if bf is None or bf == 0: return "undefined"
+    bf = abs(float(bf))
+    if bf > 100: return "extreme evidence for H1"
+    if bf > 30: return "very strong evidence for H1"
+    if bf > 10: return "strong evidence for H1"
+    if bf > 3: return "moderate evidence for H1"
+    if bf > 1: return "anecdotal evidence for H1"
+    if bf == 1: return "no evidence"
+    if bf > 1/3: return "anecdotal evidence for H0"
+    if bf > 1/10: return "moderate evidence for H0"
+    return "strong evidence for H0"
+
+def _run_bayesian_ttest_ind(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    err = _r_or_error("Bayesian Independent T-Test")
+    if err: return err
+    dep, grp = variables["dependent"], variables["grouping"]
+    res = run_r_analysis(
+        f'BayesFactor::ttestBF(formula = {dep} ~ {grp}, data = df)',
+        df,
+        'list(bf10 = as.numeric(extractBF(result)$bf))'
+    )
+    if "error" in res:
+        return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "bayesian_ttest_ind", "test_display_name": "Bayesian Independent T-Test",
+            "statistics": {"error": str(res["error"])}, "assumption_checks": {}}
+    bf10 = float(res.get("bf10", 0))
+    return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "bayesian_ttest_ind", "test_display_name": "Bayesian Independent T-Test",
+        "statistics": {"bf10": round(bf10, 4), "bf01": round(1/bf10, 4) if bf10 != 0 else 0, "interpretation": _bf_interpret(bf10)},
+        "assumption_checks": {}}
+
+def _run_bayesian_ttest_paired(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    err = _r_or_error("Bayesian Paired T-Test")
+    if err: return err
+    v1, v2 = variables["variable1"], variables["variable2"]
+    res = run_r_analysis(
+        f'BayesFactor::ttestBF(x = df${v1}, y = df${v2}, paired = TRUE)',
+        df,
+        'list(bf10 = as.numeric(extractBF(result)$bf))'
+    )
+    if "error" in res:
+        return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "bayesian_ttest_paired", "test_display_name": "Bayesian Paired T-Test",
+            "statistics": {"error": str(res["error"])}, "assumption_checks": {}}
+    bf10 = float(res.get("bf10", 0))
+    return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "bayesian_ttest_paired", "test_display_name": "Bayesian Paired T-Test",
+        "statistics": {"bf10": round(bf10, 4), "bf01": round(1/bf10, 4) if bf10 != 0 else 0, "interpretation": _bf_interpret(bf10)},
+        "assumption_checks": {}}
+
+def _run_bayesian_anova(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    err = _r_or_error("Bayesian ANOVA")
+    if err: return err
+    dep, fac = variables["dependent"], variables["factor"]
+    res = run_r_analysis(
+        f'BayesFactor::anovaBF(formula = {dep} ~ {fac}, data = df)',
+        df,
+        'list(bf10 = as.numeric(extractBF(result)$bf[1]))'
+    )
+    if "error" in res:
+        return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "bayesian_anova", "test_display_name": "Bayesian ANOVA",
+            "statistics": {"error": str(res["error"])}, "assumption_checks": {}}
+    bf10 = float(res.get("bf10", 0))
+    return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "bayesian_anova", "test_display_name": "Bayesian ANOVA",
+        "statistics": {"bf10": round(bf10, 4), "interpretation": _bf_interpret(bf10)},
+        "assumption_checks": {}}
+
+def _run_bayesian_correlation(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    err = _r_or_error("Bayesian Correlation")
+    if err: return err
+    v1, v2 = variables["variable1"], variables["variable2"]
+    res = run_r_analysis(
+        f'BayesFactor::correlationBF(df${v1}, df${v2})',
+        df,
+        'list(bf10 = as.numeric(extractBF(result)$bf))'
+    )
+    if "error" in res:
+        return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "bayesian_correlation", "test_display_name": "Bayesian Correlation",
+            "statistics": {"error": str(res["error"])}, "assumption_checks": {}}
+    bf10 = float(res.get("bf10", 0))
+    return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "bayesian_correlation", "test_display_name": "Bayesian Correlation",
+        "statistics": {"bf10": round(bf10, 4), "interpretation": _bf_interpret(bf10)},
+        "assumption_checks": {}}
+
+def _run_linear_mixed_model(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    err = _r_or_error("Linear Mixed Model")
+    if err: return err
+    dep = variables["dependent"]
+    fixed = variables.get("fixed", variables.get("factor", "group"))
+    random = variables.get("random", "subject_id")
+    formula = f'{dep} ~ {fixed} + (1|{random})'
+    res = run_r_analysis(
+        f'lme4::lmer({formula}, data = df)',
+        df,
+        '''list(
+            aic = as.numeric(AIC(result)),
+            bic = as.numeric(BIC(result)),
+            loglik = as.numeric(logLik(result)),
+            rand_var = as.numeric(VarCorr(result)[[1]][1]),
+            resid_var = as.numeric(attr(VarCorr(result), "sc")^2)
+        )'''
+    )
+    if "error" in res:
+        return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "linear_mixed_model", "test_display_name": "Linear Mixed Model",
+            "statistics": {"error": str(res["error"])}, "assumption_checks": {}}
+    return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "linear_mixed_model", "test_display_name": "Linear Mixed Model",
+        "statistics": {"formula": formula, "aic": res.get("aic"), "bic": res.get("bic"), "loglik": res.get("loglik"),
+            "random_variance": res.get("rand_var"), "residual_variance": res.get("resid_var")},
+        "assumption_checks": {}}
+
+def _run_cronbach_alpha(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    err = _r_or_error("Cronbach's Alpha")
+    if err: return err
+    cols = variables.get("variables", [])
+    if isinstance(cols, str): cols = [cols]
+    col_str = ", ".join([f'"{c}"' for c in cols])
+    res = run_r_analysis(
+        f'psych::alpha(df[, c({col_str})])',
+        df,
+        '''list(
+            raw_alpha = as.numeric(result$total$raw_alpha),
+            std_alpha = as.numeric(result$total$std.alpha),
+            avg_r = as.numeric(result$total$average_r),
+            n_items = length(result$alpha.drop$raw_alpha)
+        )'''
+    )
+    if "error" in res:
+        return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "cronbach_alpha", "test_display_name": "Reliability (Cronbach's Alpha)",
+            "statistics": {"error": str(res["error"])}, "assumption_checks": {}}
+    return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "cronbach_alpha", "test_display_name": "Reliability (Cronbach's Alpha)",
+        "statistics": {"raw_alpha": res.get("raw_alpha"), "std_alpha": res.get("std_alpha"), "average_r": res.get("avg_r"), "n_items": res.get("n_items")},
+        "assumption_checks": {}}
+
+def _run_cfa(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    err = _r_or_error("Confirmatory Factor Analysis")
+    if err: return err
+    model = variables.get("model", "")
+    if not model: return {"result_id": f"res-0", "test_name": "cfa", "test_display_name": "CFA", "statistics": {"error": "Provide model in lavaan syntax"}, "assumption_checks": {}}
+    res = run_r_analysis(
+        f"lavaan::cfa('{model}', data = df)",
+        df,
+        '''list(
+            cfi = as.numeric(fitMeasures(result, "cfi")),
+            tli = as.numeric(fitMeasures(result, "tli")),
+            rmsea = as.numeric(fitMeasures(result, "rmsea")),
+            srmr = as.numeric(fitMeasures(result, "srmr")),
+            chisq = as.numeric(fitMeasures(result, "chisq")),
+            df = as.numeric(fitMeasures(result, "df")),
+            pval = as.numeric(fitMeasures(result, "pvalue"))
+        )'''
+    )
+    if "error" in res:
+        return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "cfa", "test_display_name": "CFA",
+            "statistics": {"error": str(res["error"])}, "assumption_checks": {}}
+    return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "cfa", "test_display_name": "Confirmatory Factor Analysis",
+        "statistics": {"cfi": res.get("cfi"), "tli": res.get("tli"), "rmsea": res.get("rmsea"), "srmr": res.get("srmr"),
+            "chi_square": res.get("chisq"), "degrees_of_freedom": res.get("df"), "p_value": res.get("pval")},
+        "assumption_checks": {}}
+
+def _run_power_ttest(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    err = _r_or_error("Power Analysis")
+    if err: return err
+    d = float(options.get("effect_size", 0.5))
+    alpha = float(options.get("alpha", 0.05))
+    power = float(options.get("power", 0.8))
+    res = run_r_analysis(
+        f'pwr::pwr.t.test(d={d}, sig.level={alpha}, power={power}, type="two.sample")',
+        df,
+        'list(n = ceiling(as.numeric(result$n)))'
+    )
+    if "error" in res:
+        return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "power_ttest", "test_display_name": "Power Analysis (T-Test)",
+            "statistics": {"error": str(res["error"])}, "assumption_checks": {}}
+    return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "power_ttest", "test_display_name": "Power Analysis (T-Test)",
+        "statistics": {"required_n_per_group": res.get("n"), "effect_size_d": d, "alpha": alpha, "power": power},
+        "assumption_checks": {}}
+
+def _run_power_anova(df: pd.DataFrame, variables: dict, options: dict) -> dict:
+    err = _r_or_error("Power Analysis")
+    if err: return err
+    f = float(options.get("effect_size", 0.25))
+    k = int(options.get("k", 3))
+    alpha = float(options.get("alpha", 0.05))
+    power = float(options.get("power", 0.8))
+    res = run_r_analysis(
+        f'pwr::pwr.anova.test(f={f}, k={k}, sig.level={alpha}, power={power})',
+        df,
+        'list(n = ceiling(as.numeric(result$n)))'
+    )
+    if "error" in res:
+        return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "power_anova", "test_display_name": "Power Analysis (ANOVA)",
+            "statistics": {"error": str(res["error"])}, "assumption_checks": {}}
+    return {"result_id": f"res-{np.random.randint(1000,9999)}", "test_name": "power_anova", "test_display_name": "Power Analysis (ANOVA)",
+        "statistics": {"required_n_per_group": res.get("n"), "effect_size_f": f, "k_groups": k, "alpha": alpha, "power": power},
         "assumption_checks": {}}

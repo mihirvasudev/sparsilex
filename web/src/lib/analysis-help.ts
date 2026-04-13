@@ -100,4 +100,49 @@ export const ANALYSIS_HELP: Record<string, { when: string; assumptions: string[]
     assumptions: [],
     interpret: "Report means, standard deviations, and ranges. Check skewness and kurtosis for normality.",
   },
+  bayesian_ttest_ind: {
+    when: "Use as a Bayesian alternative to the independent t-test. Reports a Bayes factor instead of a p-value.",
+    assumptions: ["Same as independent t-test", "Uses default Cauchy prior (r = 0.707)"],
+    interpret: "BF10 > 3: moderate evidence for H1. BF10 > 10: strong. BF10 < 1/3: moderate evidence for H0. Report BF10 with Jeffreys' interpretation.",
+  },
+  bayesian_ttest_paired: {
+    when: "Bayesian alternative to the paired t-test.",
+    assumptions: ["Same as paired t-test"],
+    interpret: "Interpret BF10 using Jeffreys' scale. BF10 = 1 means equal evidence for both hypotheses.",
+  },
+  bayesian_anova: {
+    when: "Bayesian alternative to one-way ANOVA. Compares models with and without the factor.",
+    assumptions: ["Same as one-way ANOVA"],
+    interpret: "BF10 compares the model with the factor vs the intercept-only model.",
+  },
+  bayesian_correlation: {
+    when: "Bayesian alternative to Pearson correlation.",
+    assumptions: ["Same as Pearson correlation"],
+    interpret: "BF10 indicates evidence for a non-zero correlation.",
+  },
+  linear_mixed_model: {
+    when: "Use for nested or repeated data where observations are not independent (e.g., students within schools, repeated measurements within subjects).",
+    assumptions: ["Continuous DV", "Normal residuals", "Random effects normally distributed", "Correct specification of random structure"],
+    interpret: "Report fixed effects, random variance components, and model fit (AIC/BIC). Compare nested models with likelihood ratio tests.",
+  },
+  cronbach_alpha: {
+    when: "Use to assess internal consistency of a scale (e.g., questionnaire items measuring the same construct).",
+    assumptions: ["Continuous or Likert-scale items", "Items measure the same construct", "Sufficient items (≥ 3)"],
+    interpret: "Alpha > 0.9: excellent. > 0.8: good. > 0.7: acceptable. > 0.6: questionable. < 0.5: unacceptable.",
+  },
+  cfa: {
+    when: "Use to test whether data fit a hypothesized factor structure (e.g., confirming a questionnaire has 3 subscales).",
+    assumptions: ["Multivariate normality", "Sufficient sample size (N > 200)", "Correct model specification"],
+    interpret: "Good fit: CFI > .95, TLI > .95, RMSEA < .06, SRMR < .08. Acceptable: CFI > .90, RMSEA < .08.",
+  },
+  power_ttest: {
+    when: "Use during study planning to determine required sample size for a t-test.",
+    assumptions: [],
+    interpret: "Reports the minimum n per group to detect the specified effect size at the given alpha and power levels.",
+  },
+  power_anova: {
+    when: "Use during study planning to determine required sample size for an ANOVA.",
+    assumptions: [],
+    interpret: "Reports minimum n per group. Effect size f: small = 0.10, medium = 0.25, large = 0.40.",
+  },
 };

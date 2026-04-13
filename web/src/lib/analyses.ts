@@ -369,6 +369,110 @@ export const ANALYSIS_REGISTRY: Record<string, AnalysisDef> = {
       { name: "bartlett", type: "boolean", default: false, label: "Bartlett's test of sphericity", group: "Diagnostics" },
     ],
   },
+
+  // ── Bayesian (R-based) ──────────────────────────────────────────
+  bayesian_ttest_ind: {
+    display_name: "Bayesian Independent T-Test",
+    category: "Bayesian",
+    description: "Bayes factor for comparing two independent group means (requires R)",
+    variables: [
+      { slot: "dependent", label: "Dependent Variable", accept: ["numeric"], required: true },
+      { slot: "grouping", label: "Grouping Variable", accept: ["categorical"], required: true, max_groups: 2 },
+    ],
+    options: [
+      { name: "prior_scale", type: "number", default: 0.707, label: "Cauchy prior scale (r)" },
+    ],
+  },
+  bayesian_ttest_paired: {
+    display_name: "Bayesian Paired T-Test",
+    category: "Bayesian",
+    description: "Bayes factor for comparing two paired measurements (requires R)",
+    variables: [
+      { slot: "variable1", label: "Variable 1", accept: ["numeric"], required: true },
+      { slot: "variable2", label: "Variable 2", accept: ["numeric"], required: true },
+    ],
+    options: [],
+  },
+  bayesian_anova: {
+    display_name: "Bayesian ANOVA",
+    category: "Bayesian",
+    description: "Bayes factor for comparing means across groups (requires R)",
+    variables: [
+      { slot: "dependent", label: "Dependent Variable", accept: ["numeric"], required: true },
+      { slot: "factor", label: "Factor", accept: ["categorical"], required: true },
+    ],
+    options: [],
+  },
+  bayesian_correlation: {
+    display_name: "Bayesian Correlation",
+    category: "Bayesian",
+    description: "Bayes factor for linear association (requires R)",
+    variables: [
+      { slot: "variable1", label: "Variable 1", accept: ["numeric"], required: true },
+      { slot: "variable2", label: "Variable 2", accept: ["numeric"], required: true },
+    ],
+    options: [],
+  },
+
+  // ── Mixed Models (R-based) ─────────────────────────────────────
+  linear_mixed_model: {
+    display_name: "Linear Mixed Model",
+    category: "Mixed Models",
+    description: "Random and fixed effects regression for nested/repeated data (requires R + lme4)",
+    variables: [
+      { slot: "dependent", label: "Dependent Variable", accept: ["numeric"], required: true },
+      { slot: "fixed", label: "Fixed Effect", accept: ["categorical"], required: true },
+      { slot: "random", label: "Random Effect (e.g., subject_id)", accept: ["categorical"], required: true },
+    ],
+    options: [],
+  },
+
+  // ── Reliability (R-based) ──────────────────────────────────────
+  cronbach_alpha: {
+    display_name: "Cronbach's Alpha",
+    category: "Reliability",
+    description: "Internal consistency reliability for scale items (requires R + psych)",
+    variables: [
+      { slot: "variables", label: "Scale Items (3+)", accept: ["numeric"], required: true },
+    ],
+    options: [],
+  },
+
+  // ── CFA (R-based) ─────────────────────────────────────────────
+  cfa: {
+    display_name: "Confirmatory Factor Analysis",
+    category: "SEM",
+    description: "Test a hypothesized factor structure (requires R + lavaan). Enter model in lavaan syntax.",
+    variables: [
+      { slot: "model", label: "Model (lavaan syntax, e.g., f1 =~ x1 + x2 + x3)", accept: ["numeric"], required: true },
+    ],
+    options: [],
+  },
+
+  // ── Power Analysis (R-based) ───────────────────────────────────
+  power_ttest: {
+    display_name: "Power Analysis (T-Test)",
+    category: "Power",
+    description: "Calculate required sample size for a t-test (requires R + pwr)",
+    variables: [],
+    options: [
+      { name: "effect_size", type: "number", default: 0.5, label: "Effect size (d)", min: 0.01, max: 3, step: 0.01 },
+      { name: "alpha", type: "number", default: 0.05, label: "Alpha", min: 0.001, max: 0.2, step: 0.01 },
+      { name: "power", type: "number", default: 0.8, label: "Power", min: 0.5, max: 0.999, step: 0.01 },
+    ],
+  },
+  power_anova: {
+    display_name: "Power Analysis (ANOVA)",
+    category: "Power",
+    description: "Calculate required sample size for ANOVA (requires R + pwr)",
+    variables: [],
+    options: [
+      { name: "effect_size", type: "number", default: 0.25, label: "Effect size (f)", min: 0.01, max: 2, step: 0.01 },
+      { name: "k", type: "number", default: 3, label: "Number of groups", min: 2, max: 20, step: 1 },
+      { name: "alpha", type: "number", default: 0.05, label: "Alpha", min: 0.001, max: 0.2, step: 0.01 },
+      { name: "power", type: "number", default: 0.8, label: "Power", min: 0.5, max: 0.999, step: 0.01 },
+    ],
+  },
 };
 
 export const ANALYSIS_CATEGORIES = [
@@ -378,5 +482,9 @@ export const ANALYSIS_CATEGORIES = [
   { name: "Regression", analyses: ["linear_regression", "logistic_regression"] },
   { name: "Correlation", analyses: ["pearson_correlation", "spearman_correlation"] },
   { name: "Frequencies", analyses: ["chi_square", "fisher_exact", "binomial_test", "multinomial_test"] },
-  { name: "Factor Analysis", analyses: ["pca"] },
+  { name: "Factor Analysis", analyses: ["pca", "cronbach_alpha"] },
+  { name: "Bayesian", analyses: ["bayesian_ttest_ind", "bayesian_ttest_paired", "bayesian_anova", "bayesian_correlation"] },
+  { name: "Mixed Models", analyses: ["linear_mixed_model"] },
+  { name: "SEM", analyses: ["cfa"] },
+  { name: "Power", analyses: ["power_ttest", "power_anova"] },
 ];
