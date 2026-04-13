@@ -13,6 +13,7 @@ interface AppHeaderProps {
   onSelectAnalysis: (testName: string) => void;
   onToggleAgent: () => void;
   onToggleCleaning: () => void;
+  onSave: () => void;
   agentOpen: boolean;
   cleaningOpen: boolean;
   hasData: boolean;
@@ -22,6 +23,7 @@ export function AppHeader({
   onSelectAnalysis,
   onToggleAgent,
   onToggleCleaning,
+  onSave,
   agentOpen,
   cleaningOpen,
   hasData,
@@ -76,6 +78,17 @@ export function AppHeader({
       </nav>
 
       <div className="ml-auto flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={onSave}
+          disabled={!hasData}
+          title="Save project (Cmd+S)"
+        >
+          Save
+        </Button>
+        <div className="w-px h-4 bg-border" />
         <Button
           variant={cleaningOpen ? "secondary" : "ghost"}
           size="sm"

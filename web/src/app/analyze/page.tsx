@@ -13,7 +13,10 @@ import { AnalysisOptions } from "@/components/analysis/analysis-options";
 import { ResultsPanel } from "@/components/results/results-panel";
 import { AgentPanel } from "@/components/agent/agent-panel";
 import { DataCleaning } from "@/components/data/data-cleaning";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import type { ColumnInfo } from "@/lib/types";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function AnalyzePage() {
   const dataset = useDataset();
@@ -24,6 +27,25 @@ export default function AnalyzePage() {
   const [cleaningOpen, setCleaningOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<ColumnInfo | null>(null);
   const [isAiSuggested, setIsAiSuggested] = useState(false);
+
+  // Save project
+  const handleSave = useCallback(async () => {
+    if (!dataset.datasetId) return;
+    const url = `${API}/api/project/save?dataset_id=${dataset.datasetId}&analyses=${encodeURIComponent(JSON.stringify(analysis.results))}`;
+    const res = await fetch(url, { method: "POST" });
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = (dataset.filename || "project").replace(/\.\w+$/, "") + ".sparx";
+    a.click();
+  }, [dataset.datasetId, dataset.filename, analysis.results]);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSave: handleSave,
+    onRun: () => { if (dataset.datasetId) analysis.run(dataset.datasetId); },
+    onToggleAgent: () => setAgentOpen((o) => !o),
+  });
 
   // Handle agent UI actions (e.g., pre-fill analysis panel)
   agent.setUiActionHandler(
@@ -76,6 +98,7 @@ export default function AnalyzePage() {
         onSelectAnalysis={handleSelectAnalysis}
         onToggleAgent={() => setAgentOpen((o) => !o)}
         onToggleCleaning={() => setCleaningOpen((o) => !o)}
+        onSave={handleSave}
         agentOpen={agentOpen}
         cleaningOpen={cleaningOpen}
         hasData={!!dataset.datasetId}
