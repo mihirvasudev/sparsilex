@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import type { CompanionState } from "@/lib/types";
 import { CompanionBuddy } from "./companion-buddy";
 import { SpeechBubble } from "./speech-bubble";
+import { ToolBadge } from "./tool-badge";
 
 interface CompanionOverlayProps {
   /** Current buddy state from useCompanion */
@@ -79,9 +80,7 @@ export function CompanionOverlay({
         {/* Tool badge */}
         {activeTool && (state === "tool_active" || state === "processing") && (
           <div className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full mb-1 pointer-events-none">
-            <div className="bg-primary/10 border border-primary/20 text-primary text-[9px] px-2 py-0.5 rounded-full whitespace-nowrap animate-fade-in">
-              {activeTool}
-            </div>
+            <ToolBadge tool={activeTool} />
           </div>
         )}
 
