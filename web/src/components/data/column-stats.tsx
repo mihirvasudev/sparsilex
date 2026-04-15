@@ -89,15 +89,54 @@ export function ColumnStats({ column, datasetId, onTypeChanged }: ColumnStatsPro
 
       <div className="space-y-0 border-t border-border pt-2">
         <StatRow label="Type" value={column.dtype} />
-        <StatRow label="Missing" value={`${column.missing_count} (${column.missing_pct}%)`} />
+        <div className="flex justify-between items-center py-0.5">
+          <span className="text-[11px] text-muted-foreground">Missing</span>
+          <span className="text-[11px] font-mono">{column.missing_count} ({column.missing_pct}%)</span>
+        </div>
+        {/* Data completeness bar */}
+        <div className="mt-0.5 mb-1 h-1.5 rounded-full bg-border overflow-hidden">
+          <div
+            className="h-full rounded-full bg-primary/60"
+            style={{ width: `${100 - column.missing_pct}%` }}
+          />
+        </div>
         {column.unique_values !== undefined && <StatRow label="Unique" value={column.unique_values} />}
       </div>
 
       {column.inferred_type === "numeric" && (
         <div className="space-y-0 border-t border-border pt-2">
-          {column.mean !== undefined && <StatRow label="Mean" value={column.mean} />}
-          {column.median !== undefined && <StatRow label="Median" value={column.median} />}
-          {column.std !== undefined && <StatRow label="Std Dev" value={column.std} />}
+          {column.min !== undefined && column.max !== undefined && column.mean !== undefined && (
+            <div className="mb-2">
+              <div className="flex justify-between text-[9px] text-muted-foreground/50 mb-0.5">
+                <span>{Number(column.min).toFixed(2)}</span>
+                <span className="text-primary/70">μ={Number(column.mean).toFixed(2)}</span>
+                <span>{Number(column.max).toFixed(2)}</span>
+              </div>
+              <div className="relative h-1.5 rounded-full bg-border overflow-hidden">
+                {/* Range fill */}
+                <div className="absolute inset-0 bg-primary/10 rounded-full" />
+                {/* Mean marker */}
+                <div
+                  className="absolute top-0 bottom-0 w-0.5 bg-primary/70 rounded-full"
+                  style={{
+                    left: `${((Number(column.mean) - Number(column.min)) / (Number(column.max) - Number(column.min))) * 100}%`
+                  }}
+                />
+                {/* Median marker (if available) */}
+                {column.median !== undefined && (
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-blue-400/50 rounded-full"
+                    style={{
+                      left: `${((Number(column.median) - Number(column.min)) / (Number(column.max) - Number(column.min))) * 100}%`
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+          {column.mean !== undefined && <StatRow label="Mean" value={Number(column.mean).toFixed(3)} />}
+          {column.median !== undefined && <StatRow label="Median" value={Number(column.median).toFixed(3)} />}
+          {column.std !== undefined && <StatRow label="Std Dev" value={Number(column.std).toFixed(3)} />}
           {column.min !== undefined && <StatRow label="Min" value={column.min} />}
           {column.max !== undefined && <StatRow label="Max" value={column.max} />}
         </div>

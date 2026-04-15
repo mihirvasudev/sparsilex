@@ -16,6 +16,8 @@ import { AgentPanel } from "@/components/agent/agent-panel";
 import { DataCleaning } from "@/components/data/data-cleaning";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { loadProject } from "@/lib/api";
+import { CompanionOverlay } from "@/components/companion/companion-overlay";
+import { useCompanion } from "@/hooks/use-companion";
 import type { ColumnInfo } from "@/lib/types";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -30,6 +32,12 @@ export default function AnalyzePage() {
   const [selectedColumn, setSelectedColumn] = useState<ColumnInfo | null>(null);
   const [isAiSuggested, setIsAiSuggested] = useState(false);
   const [showTour, setShowTour] = useState(false);
+
+  // Companion buddy — Clicky-style AI companion
+  const companion = useCompanion({
+    agentSteps: agent.steps,
+    agentIsRunning: agent.isRunning,
+  });
 
   // Save project
   const handleSave = useCallback(async () => {
@@ -133,7 +141,23 @@ export default function AnalyzePage() {
   );
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen relative">
+      {/* Companion buddy overlay */}
+      {dataset.datasetId && (
+        <CompanionOverlay
+          state={companion.state}
+          responseText={companion.responseText}
+          isStreaming={companion.isStreaming}
+          activeTool={companion.activeTool}
+          onBuddyClick={() => {
+            if (companion.state === "sleeping") {
+              companion.wake();
+            }
+          }}
+          onDismissBubble={companion.dismissBubble}
+        />
+      )}
+
       <AppHeader
         onSelectAnalysis={handleSelectAnalysis}
         onToggleAgent={() => setAgentOpen((o) => !o)}
@@ -198,6 +222,18 @@ export default function AnalyzePage() {
                 onDataChanged={(result) => dataset.refreshFromCleaningResult(result)}
                 onClose={() => setCleaningOpen(false)}
               />
+            )}
+
+            {/* Analysis run error */}
+            {analysis.stage === "error" && analysis.error && (
+              <div className="text-xs text-destructive/80 bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2 flex items-start gap-2">
+                <span className="shrink-0 mt-0.5">⚠</span>
+                <div>
+                  <p className="font-medium">Analysis failed</p>
+                  <p className="text-[11px] text-destructive/60 mt-0.5">{analysis.error}</p>
+                </div>
+                <button onClick={analysis.clearSelection} className="ml-auto text-muted-foreground/50 hover:text-muted-foreground text-xs shrink-0">✕</button>
+              </div>
             )}
 
             {/* Analysis options panel */}

@@ -175,3 +175,44 @@
 ::selection {
   background: oklch(0.65 0.18 264 / 30%);
 }
+
+/* ── Companion Buddy ──────────────────────────────── */
+
+@keyframes companion-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-6px) rotate(1.5deg); }
+  66% { transform: translateY(-3px) rotate(-1deg); }
+}
+
+@keyframes companion-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px oklch(0.65 0.2 264 / 40%)); }
+  50% { filter: drop-shadow(0 0 14px oklch(0.65 0.2 264 / 70%)); }
+}
+
+@keyframes companion-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes companion-point-highlight {
+  0% { box-shadow: 0 0 0 0 oklch(0.65 0.2 264 / 50%); }
+  50% { box-shadow: 0 0 0 6px oklch(0.65 0.2 264 / 20%); }
+  100% { box-shadow: 0 0 0 0 oklch(0.65 0.2 264 / 0%); }
+}
+
+@keyframes companion-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.companion-float {
+  animation: companion-float 4s ease-in-out infinite;
+}
+
+.companion-glow {
+  animation: companion-glow 2s ease-in-out infinite;
+}
+
+.companion-point-highlight {
+  animation: companion-point-highlight 1.5s ease-out;
+}

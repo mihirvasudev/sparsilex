@@ -86,8 +86,29 @@ export type AgentEventType =
   | "tool_call"
   | "tool_result"
   | "ui_action"
+  | "point_at"
   | "message"
   | "done";
+
+// Companion buddy types
+export type CompanionState =
+  | "idle"
+  | "listening"
+  | "processing"
+  | "responding"
+  | "pointing"
+  | "tool_active"
+  | "sleeping";
+
+export interface PointAtEvent {
+  target: string;
+  label: string;
+}
+
+export interface CompanionPosition {
+  x: number;
+  y: number;
+}
 
 export interface AgentEvent {
   type: AgentEventType;

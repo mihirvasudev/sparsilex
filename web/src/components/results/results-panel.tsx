@@ -132,13 +132,15 @@ export function ResultsPanel({ results, onRemove, onClearAll }: ResultsPanelProp
       {results.map((result, i) => {
         const stats = result.statistics as Record<string, unknown>;
         const postHoc = stats.post_hoc as Array<Record<string, unknown>> | undefined;
+        const hasError = typeof stats.error === "string";
         const runNumber = i + 1;
 
         return (
-          <div key={result.result_id || i} className="border border-border rounded-lg bg-card animate-slide-up">
+          <div key={result.result_id || i} className={`border rounded-lg bg-card animate-slide-up ${hasError ? "border-destructive/40" : "border-border"}`}>
             <div className="px-3 py-2 border-b border-border flex items-center gap-2">
               <span className="text-[9px] font-mono text-muted-foreground/40 shrink-0">#{runNumber}</span>
               <h3 className="text-sm font-medium flex-1 truncate">{result.test_display_name}</h3>
+              {hasError && <span className="text-[9px] text-destructive/70 shrink-0">error</span>}
               {onRemove && (
                 <button
                   onClick={() => onRemove(result.result_id)}
@@ -150,10 +152,17 @@ export function ResultsPanel({ results, onRemove, onClearAll }: ResultsPanelProp
               )}
             </div>
             <div className="p-3 space-y-3">
-              <StatsTable statistics={result.statistics} testName={result.test_name} />
+              {hasError ? (
+                <div className="text-xs text-destructive/80 bg-destructive/5 border border-destructive/20 rounded px-3 py-2">
+                  <p className="font-medium mb-0.5">Analysis failed</p>
+                  <p className="text-[11px] text-destructive/60">{String(stats.error)}</p>
+                </div>
+              ) : (
+                <StatsTable statistics={result.statistics} testName={result.test_name} />
+              )}
 
               {/* Interactive Plotly charts (preferred) */}
-              {result.plotly && result.plotly.length > 0 ? (
+              {!hasError && result.plotly && result.plotly.length > 0 ? (
                 <div className="space-y-2">
                   {result.plotly.map((plot, pi) => (
                     <InteractivePlot key={pi} title={plot.title} spec={plot.plotly} />
@@ -174,15 +183,15 @@ export function ResultsPanel({ results, onRemove, onClearAll }: ResultsPanelProp
                 </div>
               ) : null}
 
-              {result.apa_text && <APAText text={result.apa_text} />}
+              {!hasError && result.apa_text && <APAText text={result.apa_text} />}
 
-              {postHoc && postHoc.length > 0 && <PostHocTable postHoc={postHoc} />}
+              {!hasError && postHoc && postHoc.length > 0 && <PostHocTable postHoc={postHoc} />}
 
-              {Object.keys(result.assumption_checks).length > 0 && (
+              {!hasError && Object.keys(result.assumption_checks).length > 0 && (
                 <AssumptionChecks checks={result.assumption_checks} />
               )}
 
-              {result.code && <CodeExport code={result.code} />}
+              {!hasError && result.code && <CodeExport code={result.code} />}
             </div>
           </div>
         );
