@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useDataset } from "@/hooks/use-dataset";
 import { useAnalysis } from "@/hooks/use-analysis";
 import { useAgent } from "@/hooks/use-agent";
@@ -18,6 +18,7 @@ import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { loadProject } from "@/lib/api";
 import { CompanionOverlay } from "@/components/companion/companion-overlay";
 import { useCompanion } from "@/hooks/use-companion";
+import { useVoice } from "@/hooks/use-voice";
 import type { ColumnInfo } from "@/lib/types";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -33,11 +34,28 @@ export default function AnalyzePage() {
   const [isAiSuggested, setIsAiSuggested] = useState(false);
   const [showTour, setShowTour] = useState(false);
 
-  // Companion buddy — Clicky-style AI companion
+  // Voice + Companion buddy — Clicky-style AI companion
+  const voice = useVoice();
   const companion = useCompanion({
     agentSteps: agent.steps,
     agentIsRunning: agent.isRunning,
   });
+
+  // When voice captures a final transcript, send it to the agent
+  useEffect(() => {
+    if (voice.finalTranscript && dataset.datasetId) {
+      companion.stopListening();
+      agent.sendMessage(dataset.datasetId, voice.finalTranscript);
+      voice.clearFinalTranscript();
+    }
+  }, [voice.finalTranscript]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // TTS: speak the response when agent finishes (if speech enabled)
+  useEffect(() => {
+    if (companion.state === "idle" && companion.responseText && voice.speechEnabled) {
+      voice.speak(companion.responseText);
+    }
+  }, [companion.state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save project
   const handleSave = useCallback(async () => {
@@ -149,9 +167,18 @@ export default function AnalyzePage() {
           responseText={companion.responseText}
           isStreaming={companion.isStreaming}
           activeTool={companion.activeTool}
+          audioLevel={voice.audioLevel}
           onBuddyClick={() => {
             if (companion.state === "sleeping") {
               companion.wake();
+            } else if (companion.state === "idle" && voice.isSupported) {
+              companion.startListening();
+              voice.startListening();
+            } else if (companion.state === "listening") {
+              voice.stopListening();
+              companion.stopListening();
+            } else if (companion.state === "responding" && voice.isSpeaking) {
+              voice.cancelSpeech();
             }
           }}
           onDismissBubble={companion.dismissBubble}
