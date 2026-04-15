@@ -106,10 +106,22 @@ async def run_agent(
 
         for block in response.content:
             if block.type == "text":
+                # Parse [POINT:target:label] tags for companion buddy
+                import re
+                point_pattern = re.compile(r'\[POINT:([^:\]]+):([^\]]+)\]')
+                clean_text = point_pattern.sub('', block.text).strip()
+                points = point_pattern.findall(block.text)
+
                 yield {
                     "event": "message",
-                    "data": json.dumps({"type": "message", "content": block.text}),
+                    "data": json.dumps({"type": "message", "content": clean_text}),
                 }
+
+                for target, label in points:
+                    yield {
+                        "event": "message",
+                        "data": json.dumps({"type": "point_at", "target": target.strip(), "label": label.strip()}),
+                    }
 
             elif block.type == "tool_use":
                 has_tool_use = True

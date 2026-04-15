@@ -221,6 +221,7 @@ export function AnalysisOptions({
           disabled={!canRun || isRunning}
           className="w-full h-8 text-xs mt-2"
           size="sm"
+          data-companion-target="run-button"
         >
           {isRunning ? (
             <span className="flex items-center gap-2">

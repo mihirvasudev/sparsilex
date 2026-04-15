@@ -19,6 +19,7 @@ import { loadProject } from "@/lib/api";
 import { CompanionOverlay } from "@/components/companion/companion-overlay";
 import { useCompanion } from "@/hooks/use-companion";
 import { useVoice } from "@/hooks/use-voice";
+import { resolveTarget, highlightTarget } from "@/lib/companion-targets";
 import type { ColumnInfo } from "@/lib/types";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -98,7 +99,7 @@ export default function AnalyzePage() {
     }
   }, [dataset.datasetId, dataset.filename, analysis.results]);
 
-  // Handle agent UI actions (e.g., pre-fill analysis panel)
+  // Handle agent UI actions (pre-fill analysis panel + companion pointing)
   agent.setUiActionHandler(
     useCallback(
       (action: string, data: Record<string, unknown>) => {
@@ -110,9 +111,20 @@ export default function AnalyzePage() {
             (prefill?.options as Record<string, unknown>) || {}
           );
           setIsAiSuggested(true);
+        } else if (action === "point_at") {
+          companion.pointAt(
+            data.target as string,
+            data.label as string
+          );
+          // Highlight target element and return buddy after 3s
+          setTimeout(() => {
+            const coords = resolveTarget(data.target as string);
+            if (coords) highlightTarget(data.target as string);
+            setTimeout(() => companion.pointingDone(), 3000);
+          }, 500);
         }
       },
-      [analysis]
+      [analysis, companion]
     )
   );
 

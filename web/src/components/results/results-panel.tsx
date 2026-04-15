@@ -136,7 +136,7 @@ export function ResultsPanel({ results, onRemove, onClearAll }: ResultsPanelProp
         const runNumber = i + 1;
 
         return (
-          <div key={result.result_id || i} className={`border rounded-lg bg-card animate-slide-up ${hasError ? "border-destructive/40" : "border-border"}`}>
+          <div key={result.result_id || i} className={`border rounded-lg bg-card animate-slide-up ${hasError ? "border-destructive/40" : "border-border"}`} data-companion-target={`result:${i}`}>
             <div className="px-3 py-2 border-b border-border flex items-center gap-2">
               <span className="text-[9px] font-mono text-muted-foreground/40 shrink-0">#{runNumber}</span>
               <h3 className="text-sm font-medium flex-1 truncate">{result.test_display_name}</h3>

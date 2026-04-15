@@ -125,6 +125,7 @@ export function DataGrid({
                       selectedColumn === col.name ? "bg-accent" : ""
                     }`}
                     onClick={() => handleHeaderClick(col)}
+                    data-companion-target={`column:${col.name}`}
                   >
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium truncate">{col.name}</span>

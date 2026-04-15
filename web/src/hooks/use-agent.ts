@@ -73,6 +73,11 @@ export function useAgent() {
                 timestamp: Date.now(),
               };
               setState((s) => ({ ...s, steps: [...s.steps, step] }));
+            } else if (data.type === "point_at") {
+              onUiAction.current?.(
+                "point_at",
+                data as Record<string, unknown>
+              );
             } else if (data.type === "ui_action") {
               onUiAction.current?.(
                 data.action as string,
