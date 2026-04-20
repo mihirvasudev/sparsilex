@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 
+export type WorkspaceMode = "menu" | "code";
+
 interface AppHeaderProps {
   onSelectAnalysis: (testName: string) => void;
   onToggleAgent: () => void;
@@ -21,6 +23,8 @@ interface AppHeaderProps {
   filename?: string | null;
   rows?: number;
   columnCount?: number;
+  mode?: WorkspaceMode;
+  onModeChange?: (mode: WorkspaceMode) => void;
 }
 
 export function AppHeader({
@@ -35,6 +39,8 @@ export function AppHeader({
   filename,
   rows,
   columnCount,
+  mode = "menu",
+  onModeChange,
 }: AppHeaderProps) {
   return (
     <header className="flex items-center h-10 border-b border-border bg-card/80 backdrop-blur-sm px-3 gap-1 shrink-0">
@@ -55,7 +61,35 @@ export function AppHeader({
         </div>
       )}
 
-      <nav className="flex items-center gap-0.5">
+      {/* Mode toggle (Menu / Code) */}
+      {onModeChange && hasData && (
+        <div className="flex items-center gap-0.5 mr-3 p-0.5 rounded-md bg-muted/40 border border-border/40">
+          <button
+            onClick={() => onModeChange("menu")}
+            className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
+              mode === "menu"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            title="Point-and-click analysis menus"
+          >
+            Menu
+          </button>
+          <button
+            onClick={() => onModeChange("code")}
+            className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
+              mode === "code"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            title="R code editor + REPL"
+          >
+            Code
+          </button>
+        </div>
+      )}
+
+      {mode === "menu" && <nav className="flex items-center gap-0.5">
         {ANALYSIS_CATEGORIES.map((cat) => {
           const hasAnalyses = cat.analyses.length > 0;
           if (!hasAnalyses) {
@@ -95,7 +129,7 @@ export function AppHeader({
             </DropdownMenu>
           );
         })}
-      </nav>
+      </nav>}
 
       <div className="ml-auto flex items-center gap-1">
         <Button

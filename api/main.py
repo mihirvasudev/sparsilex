@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import data, analysis, agent, project, report, share
+from routers import data, analysis, agent, project, report, share, session
 
 app = FastAPI(
     title="SparsileX API",
@@ -23,6 +23,8 @@ app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
 app.include_router(project.router, prefix="/api/project", tags=["project"])
 app.include_router(report.router, prefix="/api/report", tags=["report"])
 app.include_router(share.router, prefix="/api/share", tags=["share"])
+# session router defines its own /api/session prefix
+app.include_router(session.router)
 
 
 @app.get("/api/health")

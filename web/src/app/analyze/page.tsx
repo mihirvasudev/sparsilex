@@ -20,7 +20,9 @@ import { CompanionOverlay } from "@/components/companion/companion-overlay";
 import { useCompanion } from "@/hooks/use-companion";
 import { useVoice } from "@/hooks/use-voice";
 import { resolveTarget, highlightTarget } from "@/lib/companion-targets";
+import { CodeWorkspace } from "@/components/code/code-workspace";
 import type { ColumnInfo } from "@/lib/types";
+import type { WorkspaceMode } from "@/components/layout/app-header";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -34,6 +36,7 @@ export default function AnalyzePage() {
   const [selectedColumn, setSelectedColumn] = useState<ColumnInfo | null>(null);
   const [isAiSuggested, setIsAiSuggested] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("menu");
 
   // Voice + Companion buddy — Clicky-style AI companion
   const voice = useVoice();
@@ -209,6 +212,8 @@ export default function AnalyzePage() {
         filename={dataset.filename}
         rows={dataset.rows}
         columnCount={dataset.columns.length}
+        mode={workspaceMode}
+        onModeChange={setWorkspaceMode}
       />
 
       {!dataset.datasetId ? (
@@ -218,6 +223,8 @@ export default function AnalyzePage() {
           onLoadProject={handleLoadProject}
           isLoading={dataset.isLoading}
         />
+      ) : workspaceMode === "code" ? (
+        <CodeWorkspace sessionId={dataset.datasetId} />
       ) : (
       <div className="flex flex-1 min-h-0">
         {/* Left: Data Grid */}
