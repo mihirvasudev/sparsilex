@@ -30,6 +30,10 @@ def _execute_tool(tool_name: str, tool_input: dict, dataset_id: str) -> dict:
     from agent.tools.check_assumptions import check_assumptions
     from agent.tools.run_test import run_test_tool
     from agent.tools.create_plot import create_plot
+    from agent.tools.code_tools import (
+        write_file_tool, read_file_tool, edit_file_tool,
+        list_files_tool, run_in_session_tool, read_session_state_tool,
+    )
 
     dispatch = {
         "inspect_data": inspect_data,
@@ -39,6 +43,13 @@ def _execute_tool(tool_name: str, tool_input: dict, dataset_id: str) -> dict:
         "check_assumptions": check_assumptions,
         "run_test": run_test_tool,
         "create_plot": create_plot,
+        # Code-mode tools
+        "write_file": write_file_tool,
+        "read_file": read_file_tool,
+        "edit_file": edit_file_tool,
+        "list_files": list_files_tool,
+        "run_in_session": run_in_session_tool,
+        "read_session_state": read_session_state_tool,
     }
 
     if tool_name == "open_analysis_panel":

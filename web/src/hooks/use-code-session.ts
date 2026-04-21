@@ -102,6 +102,15 @@ export function useCodeSession(sessionId: string | null) {
                 addLines([{ type: "output", text: ev.data }]);
               } else if (ev.type === "error") {
                 addLines([{ type: "error", text: ev.data }]);
+              } else if (ev.type === "plot") {
+                addLines([
+                  {
+                    type: "plot",
+                    text: "",
+                    imageData: ev.data,
+                    imageFormat: (ev.format as "png" | "jpeg") ?? "png",
+                  },
+                ]);
               } else if (ev.type === "done") {
                 addLines([
                   {

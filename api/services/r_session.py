@@ -43,6 +43,7 @@ SESSION_MAX_LIFETIME_S = 8 * 3600  # 8 hours absolute cap
 # when a command block has finished. The UUID keeps them collision-safe.
 _DONE_PREFIX = ".SPARX_DONE."
 _ERR_PREFIX = ".SPARX_ERR."
+_PLOT_PREFIX = ".SPARX_PLOT."    # followed by a base64 png payload on one line
 
 
 @dataclass
@@ -237,18 +238,50 @@ async def execute_stream(session_id: str, code: str) -> AsyncIterator[dict]:
     async with session.lock:
         session.last_used_at = time.time()
         done_token = f"{_DONE_PREFIX}{uuid.uuid4().hex}"
+        plot_path_var = f".sparx_plot_{uuid.uuid4().hex[:10]}"
+        had_plot_var = f".sparx_had_plot_{uuid.uuid4().hex[:10]}"
 
-        # Wrap the user code with: try to eval, always print the done token.
-        # We use `cat(...)` so the marker appears in stdout deterministically.
-        # If the user's code errors, R prints the error to stderr (merged
-        # with stdout) and continues to the cat() line.
+        # Wrap the user code with:
+        # - Open a PNG device before running so any plot calls get captured
+        # - tryCatch around user code (so errors don't abort plot capture)
+        # - After user code: close the device, read PNG if non-empty, emit base64
+        # - Always emit the done_token so the stream reader knows we're finished
         wrapped = (
-            "tryCatch({\n"
+            f'{plot_path_var} <- tempfile(fileext = ".png")\n'
+            f'{had_plot_var} <- FALSE\n'
+            f'tryCatch({{\n'
+            f'  grDevices::png({plot_path_var}, width = 720, height = 480, res = 96, bg = "white")\n'
+            f'  tryCatch({{\n'
             + code + "\n"
-            + "}, error = function(e) {\n"
-            + f'  cat(sprintf("{_ERR_PREFIX}%s\\n", conditionMessage(e)))\n'
-            + "})\n"
-            + f'cat("{done_token}\\n")\n'
+            f'  }}, error = function(e) {{\n'
+            f'    cat(sprintf("{_ERR_PREFIX}%s\\n", conditionMessage(e)))\n'
+            f'  }}, finally = {{\n'
+            f'    while (length(grDevices::dev.list()) > 0) {{\n'
+            f'      {had_plot_var} <<- TRUE\n'
+            f'      try(grDevices::dev.off(), silent = TRUE)\n'
+            f'    }}\n'
+            f'  }})\n'
+            f'}}, error = function(e) {{\n'
+            f'  cat(sprintf("{_ERR_PREFIX}%s\\n", conditionMessage(e)))\n'
+            f'}})\n'
+            f'invisible(local({{\n'
+            f'  if ({had_plot_var} && file.exists({plot_path_var})\n'
+            f'      && file.info({plot_path_var})$size > 512) {{\n'
+            f'    .bytes <- readBin({plot_path_var}, "raw",\n'
+            f'                      n = file.info({plot_path_var})$size)\n'
+            f'    .b64 <- tryCatch(\n'
+            f'      if (requireNamespace("base64enc", quietly = TRUE))\n'
+            f'        base64enc::base64encode(.bytes)\n'
+            f'      else if (requireNamespace("jsonlite", quietly = TRUE))\n'
+            f'        jsonlite::base64_enc(.bytes)\n'
+            f'      else NULL,\n'
+            f'      error = function(e) NULL)\n'
+            f'    if (!is.null(.b64) && nchar(.b64) > 0)\n'
+            f'      cat(sprintf("{_PLOT_PREFIX}%s\\n", .b64))\n'
+            f'    suppressWarnings(try(file.remove({plot_path_var}), silent = TRUE))\n'
+            f'  }}\n'
+            f'}}))\n'
+            f'cat("{done_token}\\n")\n'
         ).encode("utf-8")
 
         start_time = time.time()
@@ -291,6 +324,12 @@ async def execute_stream(session_id: str, code: str) -> AsyncIterator[dict]:
             if line.startswith(_ERR_PREFIX):
                 msg = line[len(_ERR_PREFIX):].rstrip("\n")
                 yield {"type": "error", "data": msg}
+                continue
+
+            if line.startswith(_PLOT_PREFIX):
+                b64 = line[len(_PLOT_PREFIX):].rstrip("\n").replace(" ", "")
+                if b64:
+                    yield {"type": "plot", "format": "png", "data": b64}
                 continue
 
             # R echoes what it reads from stdin. Filter those.

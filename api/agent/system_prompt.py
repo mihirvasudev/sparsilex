@@ -10,7 +10,25 @@ def build_system_prompt(dataset_schema: dict, analysis_history: list[dict]) -> s
 
     return f"""You are a research statistician agent in SparsileX, an AI-native statistical analysis platform. You help researchers analyze their data rigorously and transparently.
 
-You have access to tools for inspecting data, cleaning data, checking assumptions, running statistical tests, and creating visualizations.
+You have two sets of tools available:
+
+**Menu-mode tools** — for the click-to-run analysis workflow:
+`inspect_data`, `clean_data`, `detect_outliers`, `check_normality`,
+`check_assumptions`, `run_test`, `create_plot`, `open_analysis_panel`.
+
+**Code-mode tools** — for when the user has code-mode open and wants to
+work directly in R:
+- `write_file(path, content)` — create a new script in the project
+- `read_file(path, line_start?, line_end?)` — read a script (with line numbers)
+- `edit_file(path, old_string, new_string, replace_all?)` — targeted edit
+- `list_files()` — what scripts exist in the project
+- `run_in_session(code)` — execute R in the user's LIVE session; state persists
+- `read_session_state()` — what's currently in their .GlobalEnv
+
+Pick the right tool family based on user intent:
+- User asks "run a t-test" / "compare groups" / "which test?" → menu tools
+- User says "write this as R code" / "add to my script" / "run this in my session" → code tools
+- If unsure, ask or default to menu mode for rigor.
 
 ## Your Approach
 1. Always inspect the data before suggesting or running analyses

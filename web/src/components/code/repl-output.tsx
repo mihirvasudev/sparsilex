@@ -4,8 +4,11 @@ import { useEffect, useRef } from "react";
 
 export interface ReplLine {
   id: string;
-  type: "input" | "output" | "error" | "meta";
+  type: "input" | "output" | "error" | "meta" | "plot";
   text: string;
+  /** For plot lines: base64-encoded image data (no data: prefix). */
+  imageData?: string;
+  imageFormat?: "png" | "jpeg";
 }
 
 interface ReplOutputProps {
@@ -44,22 +47,36 @@ export function ReplOutput({ lines, running }: ReplOutputProps) {
         </div>
       ) : (
         <div>
-          {lines.map((l) => (
-            <pre
-              key={l.id}
-              className={
-                l.type === "error"
-                  ? "text-destructive whitespace-pre-wrap break-words m-0 py-0.5"
-                  : l.type === "input"
-                  ? "text-muted-foreground/70 whitespace-pre-wrap break-words m-0 py-0.5"
-                  : l.type === "meta"
-                  ? "text-muted-foreground/50 whitespace-pre-wrap break-words m-0 py-0.5"
-                  : "text-foreground whitespace-pre-wrap break-words m-0 py-0.5"
-              }
-            >
-              {l.text}
-            </pre>
-          ))}
+          {lines.map((l) => {
+            if (l.type === "plot" && l.imageData) {
+              const fmt = l.imageFormat ?? "png";
+              return (
+                <div key={l.id} className="my-2 rounded border border-border/40 bg-background p-1">
+                  <img
+                    src={`data:image/${fmt};base64,${l.imageData}`}
+                    alt="R plot"
+                    className="max-w-full rounded"
+                  />
+                </div>
+              );
+            }
+            return (
+              <pre
+                key={l.id}
+                className={
+                  l.type === "error"
+                    ? "text-destructive whitespace-pre-wrap break-words m-0 py-0.5"
+                    : l.type === "input"
+                    ? "text-muted-foreground/70 whitespace-pre-wrap break-words m-0 py-0.5"
+                    : l.type === "meta"
+                    ? "text-muted-foreground/50 whitespace-pre-wrap break-words m-0 py-0.5"
+                    : "text-foreground whitespace-pre-wrap break-words m-0 py-0.5"
+                }
+              >
+                {l.text}
+              </pre>
+            );
+          })}
           {running && (
             <div className="text-primary/60 py-1 flex items-center gap-1.5">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse" />

@@ -91,6 +91,93 @@ TOOL_DEFINITIONS = [
             "required": ["plot_type", "variables"],
         },
     },
+    # ── Code-mode tools (Path B) ──────────────────────────────────
+    {
+        "name": "write_file",
+        "description": (
+            "Create or overwrite a file in the user's Code-mode project. "
+            "Use for new scripts. For existing files, prefer `edit_file` "
+            "so you only replace the relevant part."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Relative path, e.g. analysis.R"},
+                "content": {"type": "string", "description": "Full file contents"},
+                "language": {"type": "string", "enum": ["r", "python", "sql", "markdown"]},
+            },
+            "required": ["path", "content"],
+        },
+    },
+    {
+        "name": "read_file",
+        "description": (
+            "Read a file from the Code-mode project. Returns line-numbered "
+            "content so you can refer to specific lines when proposing edits."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "line_start": {"type": "integer"},
+                "line_end": {"type": "integer"},
+            },
+            "required": ["path"],
+        },
+    },
+    {
+        "name": "edit_file",
+        "description": (
+            "Make a targeted find-and-replace edit to an existing project file. "
+            "`old_string` must match the file exactly (whitespace + newlines). "
+            "If multiple matches exist, include more context to make it unique "
+            "or pass replace_all=true. PREFER this over write_file for any file "
+            "that already exists."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "old_string": {"type": "string"},
+                "new_string": {"type": "string"},
+                "replace_all": {"type": "boolean"},
+            },
+            "required": ["path", "old_string", "new_string"],
+        },
+    },
+    {
+        "name": "list_files",
+        "description": (
+            "List every file in the Code-mode project (names + sizes + languages). "
+            "Use this to orient yourself before reading or editing."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "run_in_session",
+        "description": (
+            "Execute R code in the user's live R session (persists across calls). "
+            "Returns captured stdout, any error message, and any plot that was "
+            "drawn (as base64 PNG). Use this to actually run analyses the user "
+            "wants to commit to their session."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "R code to execute"},
+            },
+            "required": ["code"],
+        },
+    },
+    {
+        "name": "read_session_state",
+        "description": (
+            "Get a snapshot of every object in the user's live R .GlobalEnv "
+            "(name, class, shape). Use after run_in_session to confirm what "
+            "variables are defined, or to diagnose 'object not found' errors."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
     {
         "name": "open_analysis_panel",
         "description": "Open the manual analysis options panel in the UI, pre-filled with your recommended settings. Use this when you want the user to review options before running.",

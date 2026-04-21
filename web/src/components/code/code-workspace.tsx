@@ -1,46 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { CodeEditor } from "./code-editor";
-import { FileTree, type CodeFile } from "./file-tree";
+import { FileTree } from "./file-tree";
 import { EnvInspector } from "./env-inspector";
 import { ReplOutput } from "./repl-output";
 import { useCodeSession } from "@/hooks/use-code-session";
+import { useProjectFiles } from "@/hooks/use-project-files";
 
 interface CodeWorkspaceProps {
   sessionId: string | null;
 }
 
-const DEFAULT_STARTER: CodeFile = {
-  id: "analysis",
-  name: "analysis.R",
-  language: "r",
-  content: [
-    "# Welcome to sparx Code mode.",
-    "# Write R here; Cmd/Ctrl+Enter runs a line or selection.",
-    "# Cmd/Ctrl+Shift+Enter runs the whole file.",
-    "",
-    "x <- 42",
-    "print(x * 2)",
-    "",
-  ].join("\n"),
-  modified: false,
-};
-
 /**
- * Full Code-mode workspace: Files | Editor | (REPL + Env split)
+ * Full Code-mode workspace: Files | Editor | (Env + REPL split).
  *
- * Layout at wide widths:
- *   [Files 170px] [Editor flex-1] [Right 260px]
- *                                  ├── Env (top)
- *                                  └── REPL (bottom)
- *
- * Layout at narrow widths collapses the right column under the editor.
+ * File state is synced with the backend via useProjectFiles (autosave,
+ * agent-write polling). Execution + env state via useCodeSession.
  */
 export function CodeWorkspace({ sessionId }: CodeWorkspaceProps) {
-  const [files, setFiles] = useState<CodeFile[]>([DEFAULT_STARTER]);
-  const [activeId, setActiveId] = useState<string | null>(DEFAULT_STARTER.id);
-
+  const project = useProjectFiles(sessionId);
   const session = useCodeSession(sessionId);
 
   // Load environment on first mount
@@ -49,52 +28,22 @@ export function CodeWorkspace({ sessionId }: CodeWorkspaceProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
-  const active = files.find((f) => f.id === activeId) ?? null;
-
-  const updateActive = (content: string) => {
-    if (!activeId) return;
-    setFiles((fs) =>
-      fs.map((f) =>
-        f.id === activeId ? { ...f, content, modified: content !== f.content } : f
-      )
-    );
-  };
-
-  const addFile = (name: string, language: CodeFile["language"]) => {
-    const id = `f-${Date.now()}`;
-    const newFile: CodeFile = {
-      id,
-      name,
-      language,
-      content: "",
-      modified: false,
-    };
-    setFiles((fs) => [...fs, newFile]);
-    setActiveId(id);
-  };
-
-  const deleteFile = (id: string) => {
-    setFiles((fs) => {
-      const next = fs.filter((f) => f.id !== id);
-      if (activeId === id) setActiveId(next[0]?.id ?? null);
-      return next;
-    });
-  };
+  const active = project.files.find((f) => f.id === project.activeId) ?? null;
 
   return (
     <div className="flex flex-1 min-h-0 min-w-0">
       {/* Left — file tree */}
       <div className="w-[160px] shrink-0 border-r border-border bg-card/30 flex flex-col">
         <FileTree
-          files={files}
-          activeId={activeId}
-          onSelect={setActiveId}
-          onAdd={addFile}
-          onDelete={deleteFile}
+          files={project.files}
+          activeId={project.activeId}
+          onSelect={project.setActiveId}
+          onAdd={project.addFile}
+          onDelete={project.deleteFile}
         />
       </div>
 
-      {/* Center — editor + floating run bar */}
+      {/* Center — editor with header bar */}
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-card/30 shrink-0">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -102,7 +51,13 @@ export function CodeWorkspace({ sessionId }: CodeWorkspaceProps) {
               {active?.name ?? "No file"}
             </span>
             {active?.modified && (
-              <span className="w-1 h-1 rounded-full bg-primary/70" title="unsaved" />
+              <span
+                className="w-1 h-1 rounded-full bg-primary/70"
+                title={project.saving ? "saving..." : "unsaved"}
+              />
+            )}
+            {project.saving && (
+              <span className="text-[9px] text-muted-foreground/50 ml-1">saving...</span>
             )}
           </div>
           <div className="flex items-center gap-1">
@@ -114,16 +69,14 @@ export function CodeWorkspace({ sessionId }: CodeWorkspaceProps) {
                 Stop
               </button>
             ) : (
-              <>
-                <button
-                  onClick={() => active && session.run(active.content)}
-                  disabled={!active || !sessionId}
-                  className="text-[10px] px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-500 transition-colors disabled:opacity-40"
-                  title="Run whole file (Cmd+Shift+Enter)"
-                >
-                  &#9654; Run file
-                </button>
-              </>
+              <button
+                onClick={() => active && session.run(active.content)}
+                disabled={!active || !sessionId}
+                className="text-[10px] px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-500 transition-colors disabled:opacity-40"
+                title="Run whole file (Cmd+Shift+Enter)"
+              >
+                &#9654; Run file
+              </button>
             )}
             <button
               onClick={session.clear}
@@ -139,13 +92,13 @@ export function CodeWorkspace({ sessionId }: CodeWorkspaceProps) {
             <CodeEditor
               value={active.content}
               language={active.language}
-              onChange={updateActive}
+              onChange={(v) => project.updateContent(active.id, v)}
               onRunSelection={(sel) => session.run(sel)}
               onRunAll={() => session.run(active.content)}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
-              Create or select a file to start editing.
+              {project.loaded ? "Create a file to get started." : "Loading..."}
             </div>
           )}
         </div>
