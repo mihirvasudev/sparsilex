@@ -65,15 +65,22 @@ def _execute_tool(tool_name: str, tool_input: dict, dataset_id: str) -> dict:
 
 
 async def run_agent(
-    dataset_id: str, message: str, conversation_id: str | None
+    dataset_id: str,
+    message: str,
+    conversation_id: str | None,
+    mode: str | None = None,
 ) -> AsyncGenerator[dict, None]:
-    """Run the research agent in an agentic loop, yielding SSE events."""
+    """Run the research agent in an agentic loop, yielding SSE events.
+
+    `mode` is 'menu' or 'code' (or None). When provided, it nudges the
+    system prompt to prefer the matching tool family.
+    """
 
     conv_id, memory = _get_or_create_memory(conversation_id, dataset_id)
 
     # Build context
     schema = get_dataset_schema(dataset_id)
-    system_prompt = build_system_prompt(schema, memory.analysis_history)
+    system_prompt = build_system_prompt(schema, memory.analysis_history, mode)
 
     # Add user message
     memory.add_message("user", message)

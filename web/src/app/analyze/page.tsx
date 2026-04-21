@@ -49,7 +49,7 @@ export default function AnalyzePage() {
   useEffect(() => {
     if (voice.finalTranscript && dataset.datasetId) {
       companion.stopListening();
-      agent.sendMessage(dataset.datasetId, voice.finalTranscript);
+      agent.sendMessage(dataset.datasetId, voice.finalTranscript, workspaceMode);
       voice.clearFinalTranscript();
     }
   }, [voice.finalTranscript]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -167,10 +167,10 @@ export default function AnalyzePage() {
   const handleAgentSend = useCallback(
     (message: string) => {
       if (dataset.datasetId) {
-        agent.sendMessage(dataset.datasetId, message);
+        agent.sendMessage(dataset.datasetId, message, workspaceMode);
       }
     },
-    [dataset.datasetId, agent]
+    [dataset.datasetId, agent, workspaceMode]
   );
 
   return (

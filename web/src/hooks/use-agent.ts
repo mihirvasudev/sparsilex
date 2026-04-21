@@ -23,7 +23,7 @@ export function useAgent() {
   >(null);
 
   const sendMessage = useCallback(
-    async (datasetId: string, message: string) => {
+    async (datasetId: string, message: string, mode?: "menu" | "code") => {
       // Add user message as a step
       const userStep: AgentStep = {
         id: `user-${Date.now()}`,
@@ -86,7 +86,8 @@ export function useAgent() {
             } else if (data.type === "done") {
               setState((s) => ({ ...s, isRunning: false }));
             }
-          }
+          },
+          mode
         );
       } catch (err) {
         setState((s) => ({

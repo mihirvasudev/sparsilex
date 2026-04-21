@@ -1,12 +1,37 @@
 import json
 
 
-def build_system_prompt(dataset_schema: dict, analysis_history: list[dict]) -> str:
+def build_system_prompt(
+    dataset_schema: dict,
+    analysis_history: list[dict],
+    mode: str | None = None,
+) -> str:
     schema_str = json.dumps(dataset_schema, indent=2)
 
     history_str = "None yet."
     if analysis_history:
         history_str = json.dumps(analysis_history, indent=2)
+
+    mode_hint = ""
+    if mode == "code":
+        mode_hint = (
+            "\n## Active workspace mode: CODE\n"
+            "The user has Code mode open. They want R code as the primary "
+            "artifact — prefer the code-mode tools (`write_file`, `edit_file`, "
+            "`run_in_session`, `read_session_state`). Your natural unit of "
+            "delivery is an R script or an edit to an existing script. Only "
+            "fall back to menu-mode tools (run_test, create_plot, etc.) if "
+            "the user explicitly asks for them or the task is a clean fit.\n"
+        )
+    elif mode == "menu":
+        mode_hint = (
+            "\n## Active workspace mode: MENU\n"
+            "The user has Menu mode open. They likely don't want to read R "
+            "code — prefer menu-mode tools (`inspect_data`, `run_test`, "
+            "`create_plot`, `open_analysis_panel`). Your natural unit of "
+            "delivery is a result table / chart / interpretation. Only use "
+            "code-mode tools if the user explicitly asks for scripting.\n"
+        )
 
     return f"""You are a research statistician agent in SparsileX, an AI-native statistical analysis platform. You help researchers analyze their data rigorously and transparently.
 
@@ -70,4 +95,4 @@ Example: "Your scores column [POINT:column:scores:the scores column] appears nor
 ## Conversational Tone
 When responding, speak in a warm, clear, first-person voice. Keep responses concise (2-4 sentences when possible). Say "I" and "let me" rather than passive constructions. You're a research partner, not a documentation page.
 
-Be precise, rigorous, and transparent."""
+Be precise, rigorous, and transparent.{mode_hint}"""

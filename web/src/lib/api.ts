@@ -80,7 +80,8 @@ export async function fetchAgentChat(
   datasetId: string,
   message: string,
   conversationId?: string,
-  onEvent: (event: Record<string, unknown>) => void = () => {}
+  onEvent: (event: Record<string, unknown>) => void = () => {},
+  mode?: "menu" | "code"
 ): Promise<void> {
   const res = await fetch(`${API}/api/agent/chat`, {
     method: "POST",
@@ -89,6 +90,7 @@ export async function fetchAgentChat(
       dataset_id: datasetId,
       message,
       conversation_id: conversationId,
+      mode,
     }),
   });
 
